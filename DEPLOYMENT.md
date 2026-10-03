@@ -463,15 +463,29 @@ sudo systemctl reload apache2
 | `Referrer-Policy`            | Apache  | Same: one site-wide value, no per-route variation.                                                                                                   |
 | `Permissions-Policy`         | Apache  | Same.                                                                                                                                                |
 | `Content-Security-Policy`    | **App** | It carries a per-request nonce, so only the thing rendering the HTML can set it. The vhost must not set it as well — see below.                      |
-| `X-Powered-By` (unset)       | Apache  | Nitro sets it on error responses. Stripping it at the proxy covers every path, including ones the app never reaches.                                 |
+| `X-Powered-By` (unset)       | Apache  | Nitro sets it on every response it renders, 200s included. Stripping it at the proxy covers every path, including ones the app never reaches.        |
 | `Content-Type`               | **App** | Nitro knows the type of each response. Apache must not override it, which is exactly what `nosniff` relies on.                                       |
 | `Cache-Control` on `/_nuxt/` | **App** | Nitro already emits `public, max-age=31536000, immutable` because it knows the filenames are content-hashed. Apache uses `setifempty`, so it defers. |
 | `ETag` / `Last-Modified`     | **App** | Nitro computes these from the response body.                                                                                                         |
 
-**On a 200 the app sets no security headers.** There is no `routeRules`, no
-`nitro.routeRules`, and no server middleware setting headers — confirmed by
-`curl -D -` against the Node server, which returns only `Content-Type`, `ETag`,
-`Last-Modified`, `Content-Length`, `Date` and the keep-alive pair.
+**On a 200 the app sets exactly one security header: the CSP.**
+`server/plugins/content-security-policy.ts` sets it on every response it
+renders, so the nonce and the policy travel together. There is still no
+`routeRules` and no `nitro.routeRules`; everything else in the list above comes
+from Apache. Confirmed by `curl -D -` against the Node server:
+
+```bash
+curl -sD- -o/dev/null http://127.0.0.1:3000/
+#   content-security-policy: ... script-src 'self' 'nonce-...' ...
+#   content-type: text/html;charset=utf-8
+#   x-powered-by: Nuxt
+#   Date, Connection, Keep-Alive, Content-Length
+```
+
+Note what is _not_ there: no `ETag` and no `Last-Modified`. `/` is rendered per
+request now that it is no longer prerendered, so there is no static file to
+stamp. The `ETag` / `Last-Modified` / `Cache-Control` rows in the table above
+describe `/_nuxt/` assets, which are served from disk and do carry all three.
 
 **On an error it does.** Nitro adds its own defensive set to a 404 or a 500,
 and which one you get depends on the `Accept` header:
