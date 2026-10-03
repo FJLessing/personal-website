@@ -58,6 +58,18 @@ describe('site sections', () => {
     expect(text).toContain(HERO.tagline)
     expect(text).toContain(HERO.ctaLabel)
     expect(wrapper.get('img').attributes('alt')).toBe(HERO.portraitAlt)
+    // Literal paths, not HERO.portrait.*: the test must fail if the content
+    // module points the hero back at the full-size /profile.png.
+    const sources = wrapper.findAll('picture source')
+    expect(
+      sources.map((s) => [s.attributes('type'), s.attributes('srcset')]),
+    ).toEqual([
+      ['image/avif', '/profile-512.avif'],
+      ['image/webp', '/profile-512.webp'],
+    ])
+    expect(wrapper.get('picture img').attributes('src')).toBe(
+      '/profile-512.png',
+    )
   })
 
   it('About renders every paragraph and aside', async () => {
