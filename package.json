@@ -22,6 +22,7 @@
     "typecheck": "nuxt typecheck",
     "test": "vitest run",
     "bg:cost": "vite-node scripts/background-cost.ts",
+    "bg:contrast": "vite-node scripts/background-contrast.ts",
     "test:watch": "vitest"
   },
   "devDependencies": {

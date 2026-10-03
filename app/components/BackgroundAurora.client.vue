@@ -1,4 +1,15 @@
 <script setup lang="ts">
+import {
+  ACCENT,
+  ACCENT_HOT,
+  ACCENT_WARM,
+  AURORA_ALPHA_ONE,
+  AURORA_ALPHA_THREE,
+  AURORA_ALPHA_TWO,
+  AURORA_GRAIN_ALPHA,
+  AURORA_VIGNETTE_ALPHA,
+} from '~/utils/backgrounds/palette'
+
 /**
  * Concept three — "Aurora".
  *
@@ -13,6 +24,28 @@
  */
 const root = ref<HTMLElement | null>(null)
 const paused = ref(false)
+
+/**
+ * Colours and alphas come from the shared budget rather than being typed into
+ * the stylesheet, so the contrast test and the thing on screen cannot drift
+ * apart. Each gradient also gets a mid stop at a third of its centre alpha,
+ * which is what keeps the falloff smooth instead of banding.
+ */
+const stops = (colour: readonly [number, number, number], alpha: number) => {
+  const rgb = colour.join(' ')
+  return (
+    `rgb(${rgb} / ${(alpha * 100).toFixed(1)}%), ` +
+    `rgb(${rgb} / ${((alpha / 3) * 100).toFixed(1)}%) 48%, transparent 72%`
+  )
+}
+
+const palette = {
+  '--blob-one': stops(ACCENT, AURORA_ALPHA_ONE),
+  '--blob-two': stops(ACCENT_WARM, AURORA_ALPHA_TWO),
+  '--blob-three': stops(ACCENT_HOT, AURORA_ALPHA_THREE),
+  '--grain-alpha': `${(AURORA_GRAIN_ALPHA * 100).toFixed(1)}%`,
+  '--vignette-alpha': `${(AURORA_VIGNETTE_ALPHA * 100).toFixed(1)}%`,
+}
 
 onMounted(() => {
   const el = root.value
@@ -39,7 +72,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="root" class="aurora h-full w-full" :class="{ 'is-paused': paused }">
+  <div
+    ref="root"
+    class="aurora h-full w-full"
+    :class="{ 'is-paused': paused }"
+    :style="palette"
+  >
     <div class="blob blob-one" />
     <div class="blob blob-two" />
     <div class="blob blob-three" />
@@ -69,24 +107,14 @@ onMounted(() => {
 .blob-one {
   top: -32vmax;
   left: -26vmax;
-  background: radial-gradient(
-    closest-side,
-    rgb(240 177 0 / 14%),
-    rgb(240 177 0 / 5%) 48%,
-    transparent 72%
-  );
+  background: radial-gradient(closest-side, var(--blob-one));
   animation: drift-one 52s ease-in-out infinite;
 }
 
 .blob-two {
   right: -34vmax;
   bottom: -30vmax;
-  background: radial-gradient(
-    closest-side,
-    rgb(235 150 40 / 11%),
-    rgb(235 150 40 / 4%) 46%,
-    transparent 70%
-  );
+  background: radial-gradient(closest-side, var(--blob-two));
   animation: drift-two 67s ease-in-out infinite;
 }
 
@@ -95,12 +123,7 @@ onMounted(() => {
   right: -20vmax;
   width: 65vmax;
   height: 65vmax;
-  background: radial-gradient(
-    closest-side,
-    rgb(250 220 160 / 8%),
-    rgb(250 220 160 / 3%) 44%,
-    transparent 68%
-  );
+  background: radial-gradient(closest-side, var(--blob-three));
   animation: drift-three 43s ease-in-out infinite;
 }
 
@@ -112,7 +135,7 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   background-image: radial-gradient(
-    rgb(255 255 255 / 4.5%) 1px,
+    rgb(255 255 255 / var(--grain-alpha)) 1px,
     transparent 1px
   );
   background-size: 22px 22px;
@@ -125,7 +148,7 @@ onMounted(() => {
   background: radial-gradient(
     ellipse at center,
     transparent 35%,
-    rgb(0 0 0 / 45%) 100%
+    rgb(0 0 0 / var(--vignette-alpha)) 100%
   );
 }
 

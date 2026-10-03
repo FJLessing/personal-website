@@ -1,3 +1,12 @@
+import {
+  ACCENT,
+  ACCENT_HOT,
+  GLYPH_ALPHA_HOT,
+  GLYPH_ALPHA_PEAK,
+  GLYPH_STILL_ALPHA_HIGH,
+  GLYPH_STILL_ALPHA_LOW,
+  rgba,
+} from './palette'
 import type { BackgroundScene } from './scene'
 
 /**
@@ -16,9 +25,13 @@ import type { BackgroundScene } from './scene'
 
 const CHARS = '0123456789ABCDEF<>[]{}()/\\|+-=*:;.'
 
-/** The site accent, and a hot variant for glyphs under the cursor. */
-const COOL = 'rgb(240, 177, 0)'
-const HOT = 'rgb(255, 238, 190)'
+/**
+ * The site accent, and a hot variant for glyphs under the cursor. Both are
+ * drawn opaque and modulated with `globalAlpha`; the two alpha budgets live in
+ * `palette.ts` and are what the contrast test checks.
+ */
+const COOL = rgba(ACCENT, 1)
+const HOT = rgba(ACCENT_HOT, 1)
 
 interface Glyph {
   x: number
@@ -86,7 +99,9 @@ export function createGlyphScene(): BackgroundScene {
       char: pickChar(),
       left: life,
       life,
-      power: 0.35 + Math.random() * 0.65,
+      // Floor at half: below that a glyph spends its whole life too faint to
+      // read as a character, which is just noise in the gutter.
+      power: 0.5 + Math.random() * 0.5,
     })
   }
 
@@ -146,7 +161,7 @@ export function createGlyphScene(): BackgroundScene {
         const age = 1 - glyph.left / glyph.life
         // Quick strike, slow decay.
         const envelope = age < 0.18 ? age / 0.18 : 1 - (age - 0.18) / 0.82
-        let alpha = envelope * glyph.power * 0.5
+        let alpha = envelope * glyph.power * GLYPH_ALPHA_PEAK
         let hot = false
 
         if (hasPointer) {
@@ -155,10 +170,19 @@ export function createGlyphScene(): BackgroundScene {
           const distanceSquared = dx * dx + dy * dy
           if (distanceSquared < radiusSquared) {
             const near = 1 - Math.sqrt(distanceSquared) / pointerRadius
-            alpha += near * 0.45
             hot = near > 0.4
+            // Under the cursor a glyph is pulled up to its budget regardless
+            // of the power it was born with: that is the point of the cursor.
+            const lifted = hot
+              ? envelope * GLYPH_ALPHA_HOT * (0.6 + 0.4 * near)
+              : envelope * GLYPH_ALPHA_PEAK * (glyph.power + near)
+            if (lifted > alpha) alpha = lifted
           }
         }
+
+        // Hard ceiling, because the two colours have different budgets.
+        const limit = hot ? GLYPH_ALPHA_HOT : GLYPH_ALPHA_PEAK
+        if (alpha > limit) alpha = limit
 
         if (Math.random() < (hot ? rerollChance * 4 : rerollChance)) {
           glyph.char = pickChar()
@@ -169,7 +193,7 @@ export function createGlyphScene(): BackgroundScene {
           ctx.fillStyle = next
           fill = next
         }
-        ctx.globalAlpha = alpha > 1 ? 1 : alpha
+        ctx.globalAlpha = alpha
         ctx.fillText(glyph.char, glyph.x, glyph.y)
 
         glyphs[write] = glyph
@@ -198,7 +222,9 @@ export function createGlyphScene(): BackgroundScene {
       for (let i = 0; i < count; i += 1) {
         const col = Math.floor(random() * cols)
         const row = Math.floor(random() * rows)
-        ctx.globalAlpha = 0.1 + random() * 0.16
+        ctx.globalAlpha =
+          GLYPH_STILL_ALPHA_LOW +
+          random() * (GLYPH_STILL_ALPHA_HIGH - GLYPH_STILL_ALPHA_LOW)
         ctx.fillText(
           CHARS.charAt(Math.floor(random() * CHARS.length)),
           col * cellWidth + cellWidth / 2,

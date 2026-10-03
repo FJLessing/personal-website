@@ -87,13 +87,25 @@ filled in.
 `app/components/SiteBackground.client.vue` is deliberately empty. The `.client`
 suffix means Nuxt never renders it on the server, so whatever mounts there may
 use `window`, `document`, `requestAnimationFrame` and a canvas freely without
-breaking SSR or causing a hydration mismatch. The solid `#232323` backdrop
+breaking SSR or causing a hydration mismatch. The solid `#0d0d0d` backdrop
 behind it is painted in `app.vue` with CSS, so the page looks right with
 JavaScript disabled or still loading.
+
+That wrapper in `app.vue` carries `isolate`, and it has to. Without a stacking
+context on it, its own background paints _after_ its negative-z-index
+children, so the background layer ends up underneath the page colour. It still
+renders — it is just multiplied down to a tenth of its brightness, which looks
+like a background that does not work rather than one that is mis-stacked.
 
 Whatever lands there must cap work on small screens, pause when the tab is
 hidden, honour `prefers-reduced-motion: reduce`, stay behind the content
 (`-z-10`) and never swallow pointer events.
+
+Its colours come from `app/utils/backgrounds/palette.ts`, which is the one
+place the alphas live. Backgrounds are translucent layers over a known opaque
+backdrop, so "bright enough to see" and "dim enough to read text over" are
+both arithmetic: `npm run bg:contrast` prints the table and
+`test/backgrounds.spec.ts` asserts both ends of it.
 
 ### Icons
 

@@ -1,3 +1,4 @@
+import { ACCENT, CONTOUR_ALPHA_HIGH, CONTOUR_ALPHA_LOW, rgba } from './palette'
 import type { BackgroundScene, SceneSize } from './scene'
 
 /**
@@ -9,9 +10,6 @@ import type { BackgroundScene, SceneSize } from './scene'
  * is one marching-squares pass stroked as a single path, which is what keeps
  * this cheap enough to run behind text.
  */
-
-/** The site accent, borrowed rather than reinvented. */
-const ACCENT = '240, 177, 0'
 
 interface Lobe {
   /** Lissajous centre, as a fraction of the viewport. */
@@ -202,14 +200,19 @@ export function createContourScene(): BackgroundScene {
     const span = max - min
     if (span <= 0) return
 
-    ctx.lineWidth = 1
     ctx.lineCap = 'round'
     for (let i = 1; i <= levels; i += 1) {
       const level = min + (span * i) / (levels + 1)
       // Higher ground reads brighter, so the terrain has depth without a
-      // second colour and without ever getting near the text contrast.
-      const alpha = 0.05 + (i / levels) * 0.15
-      ctx.strokeStyle = `rgba(${ACCENT}, ${alpha.toFixed(3)})`
+      // second colour. Both ends of the ramp are budgeted in `palette.ts`.
+      const height = i / levels
+      const alpha =
+        CONTOUR_ALPHA_LOW + (CONTOUR_ALPHA_HIGH - CONTOUR_ALPHA_LOW) * height
+      // The top lines are also slightly fatter. Widening a line lights more
+      // pixels without raising peak luminance, which is the one way to make a
+      // hairline read brighter that does not eat into the text budget.
+      ctx.lineWidth = 1 + height * 0.5
+      ctx.strokeStyle = rgba(ACCENT, alpha)
       ctx.beginPath()
       traceLevel(ctx, level)
       ctx.stroke()
