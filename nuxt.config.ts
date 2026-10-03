@@ -99,8 +99,8 @@ export default defineNuxtConfig({
      * milliseconds on the first cold hit; but `server/plugins/content-
      * security-policy.ts` puts a per-request nonce in the HTML, and a nonce
      * baked into a static file at build time is the same nonce for every
-     * visitor — which is worth nothing. The app server-renders every request
-     * either way, and Nitro's route cache covers the cold-start cost.
+     * visitor — which is worth nothing. The app server-renders every request.
+     * Do not add a `routeRules` cache for `/` either: it would store the nonce.
      */
     prerender: { routes: [], crawlLinks: false },
   },

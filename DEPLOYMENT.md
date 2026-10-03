@@ -389,11 +389,14 @@ meaningless — it belongs on `:443` only.
     #    reliably populated.
     Header set Cache-Control "no-cache" "expr=%{CONTENT_TYPE} =~ m#^text/html#"
 
-    # 3. public/ assets — profile.png, the favicons, the manifest. Unhashed
+    # 3. public/ assets — the profile-512 portrait (avif, webp, png; the
+    #    hero's LCP image), profile.png, the favicons, the manifest. Unhashed
     #    filenames, so a long cache would pin a stale logo. mod_expires owns
     #    Cache-Control for these types; mod_headers does not touch them.
     <IfModule mod_expires.c>
         ExpiresActive On
+        ExpiresByType image/avif                "access plus 1 day"
+        ExpiresByType image/webp                "access plus 1 day"
         ExpiresByType image/png                 "access plus 1 day"
         ExpiresByType image/x-icon              "access plus 1 day"
         ExpiresByType image/vnd.microsoft.icon  "access plus 1 day"
@@ -498,7 +501,8 @@ curl -sD- -o/dev/null                     http://127.0.0.1:3000/nope
 #   content-security-policy: script-src 'none'; frame-ancestors 'none';
 
 curl -sD- -o/dev/null -H 'Accept: text/html' http://127.0.0.1:3000/nope
-#   the first three, no CSP, plus:
+#   the first three, plus:
+#   content-security-policy: default-src 'self'; script-src 'self' 'nonce-…'; …
 #   x-powered-by: Nuxt
 ```
 
@@ -528,7 +532,7 @@ build, not guessed:
 | `script-src 'self' 'nonce-…'`      | Bundles come from `/_nuxt/` (self). The nonce covers the inline blocks Nuxt emits — the import map, the runtime-config script, the JSON-LD and the payload — and is regenerated per request. No `'unsafe-inline'`: with a nonce present, a browser that understands CSP 2+ ignores it anyway, and it is not there to ignore. |
 | `style-src 'self' 'unsafe-inline'` | `entry.*.css` is self, and so are the `@font-face` rules now that IBM Plex is served from `public/fonts/`. `'unsafe-inline'` covers the one `<style>` block in the head — the `noscript` rule in `nuxt.config.ts` — plus Vue's `style="display:none"` attribute. The scoped background CSS is bundled, not inlined.          |
 | `font-src 'self'`                  | The woff2 files are in `public/fonts/`, served by this origin. No third-party font origin is reachable, which is the point: nothing about a visitor reaches Google before the page paints.                                                                                                                                   |
-| `img-src 'self'`                   | The only image is `/profile.png`, plus the favicons and manifest icons. No `data:` URIs anywhere in the HTML or the CSS — verified with `grep`. Add `data:` only if that changes.                                                                                                                                            |
+| `img-src 'self'`                   | The hero portrait is `/profile-512.avif`, `.webp` and `.png`; `/profile.png` is the og/twitter/JSON-LD image. Plus the favicons and manifest icons. No `data:` URIs anywhere in the HTML or the CSS — verified with `grep`. Add `data:` only if that changes.                                                                |
 | `connect-src 'self'`               | Hydration fetches `/_payload.json`. Nothing else makes a request. If a contact endpoint is ever added, keep it same-origin and this stays as it is.                                                                                                                                                                          |
 | `manifest-src 'self'`              | `/site.webmanifest`.                                                                                                                                                                                                                                                                                                         |
 | `frame-ancestors 'none'`           | Clickjacking. It supersedes `X-Frame-Options` on every page the app renders. The vhost sets `X-Frame-Options: DENY` as well, because it is the only framing defence left on a response the app never produced — a 502 while Node is down, for one.                                                                           |
@@ -546,8 +550,9 @@ because Apache cannot know a value the app never told it.
 
 That is also why **`/` is no longer prerendered**. A nonce baked into a static
 file at build time is the same nonce for every visitor, which is worth nothing.
-The cost is a few milliseconds on the first cold hit; Nitro's route cache
-covers the rest.
+The cost is a few milliseconds of server render per request. There is
+deliberately no `routeRules` cache on `/`: it would store the HTML, nonce and
+all, and hand the same nonce to every visitor.
 
 **On `style-src 'unsafe-inline'`:** it stays. The `noscript` rule in
 `nuxt.config.ts` and Vue's `style="display:none"` attribute both need it, and a
