@@ -165,6 +165,16 @@ Sans is the variable font, so one file per subset covers every weight. Mono is
 static: one file per weight, and only 400/500/700 because nothing uses 600.
 Licence: SIL OFL 1.1, in `public/fonts/LICENSE.txt`.
 
+### The portrait is four files
+
+`public/profile.png` is the untouched master, 620x617 and 480 KB. It is the
+Open Graph image and nothing else — the page never loads it.
+
+The hero loads `profile-512.{avif,webp,png}` through a `<picture>`: 512px
+square, which is the rendered box at 2x, at 13 KB, 17 KB and 122 KB. A browser
+takes the first format it understands, so almost every visitor gets the AVIF.
+Regenerate them from the master with `sharp` if the photo ever changes.
+
 ### Content lives in one file
 
 `app/content/site.ts` holds every user-visible string, each block annotated with

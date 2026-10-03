@@ -14,18 +14,25 @@ import { HERO } from '~/content/site'
             class="h-56 w-56 overflow-hidden rounded-2xl border border-zinc-800 sm:h-64 sm:w-64"
           >
             <!--
-              Width/height are the intrinsic pixel size of the source file, so
-              the browser reserves the box and the page does not jump when the
-              image lands. `fetchpriority="high"` because this is the LCP image.
+              AVIF first, then WebP, then PNG for anything that reads neither.
+              13 KB, 17 KB and 122 KB respectively, against 480 KB for the
+              full-size master. Width/height are the intrinsic pixel size of
+              all three, so the browser reserves the box and the page does not
+              jump when the image lands. `fetchpriority="high"` because this is
+              the LCP image.
             -->
-            <img
-              :src="HERO.portraitSrc"
-              :alt="HERO.portraitAlt"
-              width="620"
-              height="617"
-              fetchpriority="high"
-              class="h-full w-full object-cover"
-            />
+            <picture>
+              <source :srcset="HERO.portrait.avif" type="image/avif" />
+              <source :srcset="HERO.portrait.webp" type="image/webp" />
+              <img
+                :src="HERO.portrait.fallback"
+                :alt="HERO.portraitAlt"
+                :width="HERO.portrait.width"
+                :height="HERO.portrait.height"
+                fetchpriority="high"
+                class="h-full w-full object-cover"
+              />
+            </picture>
           </div>
         </div>
 

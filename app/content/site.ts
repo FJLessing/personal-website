@@ -105,11 +105,25 @@ export interface NavigationContent {
   readonly links: readonly NavLink[]
 }
 
+/**
+ * One image in three formats. `fallback` is what every browser can read and
+ * what `<img>` points at; the others are offered first and taken if supported.
+ * `width`/`height` are the intrinsic pixels of all three, so the browser can
+ * reserve the box before any of them arrive.
+ */
+export interface ResponsiveImage {
+  readonly avif: string
+  readonly webp: string
+  readonly fallback: string
+  readonly width: number
+  readonly height: number
+}
+
 export interface HeroContent {
   readonly eyebrow: string
   readonly greeting: string
   readonly name: string
-  readonly portraitSrc: string
+  readonly portrait: ResponsiveImage
   readonly portraitAlt: string
   readonly tagline: string
   readonly ctaLabel: string
@@ -234,7 +248,18 @@ export const HERO: HeroContent = {
   eyebrow: 'Head of Development at BRAVE',
   greeting: "Hi, I'm",
   name: 'FJ Lessing',
-  portraitSrc: '/profile.png',
+  /**
+   * 512px square: the box is 224px, 256px from `sm`, so this covers a 2x
+   * screen with nothing to spare. `/profile.png` is the untouched master and
+   * stays as the Open Graph image, which wants the larger picture.
+   */
+  portrait: {
+    avif: '/profile-512.avif',
+    webp: '/profile-512.webp',
+    fallback: '/profile-512.png',
+    width: 512,
+    height: 512,
+  },
   portraitAlt: 'FJ Lessing',
   tagline:
     'I lead a team of developers delivering software for startups and corporate clients, and I design how agents and agentic workflows fit that work. Full-stack, mobile and cloud engineering under all of it.',
