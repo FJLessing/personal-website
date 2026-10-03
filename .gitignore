@@ -1,0 +1,29 @@
+# Nuxt
+.nuxt
+.output
+.nitro
+.cache
+dist
+
+# Dependencies
+node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.DS_Store
+.idea
+.vscode
+*.swp
+
+# Local tooling caches
+.eslintcache
+.wrangler
