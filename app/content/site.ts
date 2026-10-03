@@ -75,13 +75,6 @@ export interface ContactChannel {
   readonly external: boolean
 }
 
-export interface ContactField {
-  readonly name: 'name' | 'email' | 'message'
-  readonly label: string
-  readonly placeholder: string
-  readonly type: 'text' | 'email' | 'textarea'
-}
-
 export interface SiteMeta {
   readonly title: string
   readonly description: string
@@ -150,14 +143,6 @@ export interface ContactContent {
   readonly heading: AccentHeading
   readonly intro: string
   readonly channels: readonly ContactChannel[]
-  readonly form: {
-    readonly label: string
-    readonly fields: readonly ContactField[]
-    readonly submitLabel: string
-    readonly submittingLabel: string
-    readonly successMessage: string
-    readonly errorMessage: string
-  }
 }
 
 export interface FooterContent {
@@ -503,33 +488,6 @@ export const CONTACT: ContactContent = {
       external: true,
     },
   ],
-  form: {
-    label: 'Contact form',
-    fields: [
-      {
-        name: 'name',
-        label: 'Name',
-        placeholder: 'Your name',
-        type: 'text',
-      },
-      {
-        name: 'email',
-        label: 'Email',
-        placeholder: 'your@email.com',
-        type: 'email',
-      },
-      {
-        name: 'message',
-        label: 'Message',
-        placeholder: 'Your message',
-        type: 'textarea',
-      },
-    ],
-    submitLabel: 'Send Message',
-    submittingLabel: 'Sending...',
-    successMessage: "✅ Message sent successfully! I'll get back to you soon.",
-    errorMessage: '❌ Oops! Something went wrong. Please try again later.',
-  },
 }
 
 export const FOOTER: FooterContent = {

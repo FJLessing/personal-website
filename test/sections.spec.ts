@@ -112,7 +112,7 @@ describe('site sections', () => {
     }
   })
 
-  it('Contact renders the channels and a labelled field per form entry', async () => {
+  it('Contact renders every channel as a working link', async () => {
     const wrapper = await mountSuspended(ContactSection)
     const text = wrapper.text()
 
@@ -120,13 +120,20 @@ describe('site sections', () => {
     for (const channel of CONTACT.channels) {
       expect(text).toContain(channel.label)
       expect(text).toContain(channel.value)
+      expect(wrapper.html()).toContain(`href="${channel.href}"`)
     }
-    for (const field of CONTACT.form.fields) {
-      const control = wrapper.get(`#contact-${field.name}`)
-      expect(control.exists()).toBe(true)
-      expect(wrapper.html()).toContain(`for="contact-${field.name}"`)
-    }
-    expect(text).toContain(CONTACT.form.submitLabel)
+  })
+
+  /**
+   * The form posted to an endpoint that was never built, so every submission
+   * showed the error message. It stays out until a server route exists.
+   */
+  it('Contact ships no form while there is nothing to post to', async () => {
+    const wrapper = await mountSuspended(ContactSection)
+
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.find('textarea').exists()).toBe(false)
   })
 
   it('Footer renders the social links and the current year', async () => {

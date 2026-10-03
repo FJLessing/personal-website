@@ -14,18 +14,6 @@ export default defineNuxtConfig({
     typeCheck: false, // `npm run typecheck` runs vue-tsc; keep dev/build fast.
   },
 
-  runtimeConfig: {
-    public: {
-      /**
-       * Contact form target. The reference site posted to a PHP script that
-       * relayed to Slack; a Nitro Node server has no PHP runtime, so this is
-       * configurable and the replacement endpoint is a separate ticket.
-       * Override with `NUXT_PUBLIC_CONTACT_ENDPOINT`.
-       */
-      contactEndpoint: '/api/contact',
-    },
-  },
-
   app: {
     head: {
       htmlAttrs: { lang: 'en', class: 'dark' },

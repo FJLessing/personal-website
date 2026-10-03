@@ -106,7 +106,7 @@ app/
     ExperienceSection.vue
     SkillsSection.vue
     InterestsSection.vue
-    ContactSection.vue          contact details + the contact form
+    ContactSection.vue          contact details, no form (see below)
     SiteFooter.vue
     SectionHeading.vue          heading with one accented run of words
     AppIcon.vue                 the eight inlined SVG icons
@@ -123,8 +123,11 @@ scripts/
 test/
   sections.spec.ts              a smoke test per section
   hydration.spec.ts             server render vs. client hydrate, per section
+  accessibility.spec.ts         measured text contrast, label-in-name
+  error-page.spec.ts            the error page's copy and chrome
   backgrounds.spec.ts           scene cost caps and the colour budget
   background-runtime.spec.ts    reduced motion, pausing, small-screen caps
+  support/tailwind-palette.ts   Tailwind's OKLCH tokens resolved to sRGB
 ```
 
 ### Content lives in one file
@@ -182,30 +185,33 @@ what the previous site used via `lucide-react`.
 
 ## The contact form
 
-**The form has no working endpoint yet.** This needs a follow-up before the site
-goes live.
+**There is no contact form.** The contact section is the email, phone and
+website links, which work without a server.
 
 The previous site posted a Slack Block Kit payload to `/slack-proxy.php`. A Nitro
 Node server has no PHP runtime, so that endpoint does not exist here, and
 composing the Slack payload in the browser is not worth reproducing. It puts the
 message format in public and turns the proxy into an open relay.
 
-The form now POSTs JSON to whatever `NUXT_PUBLIC_CONTACT_ENDPOINT` points at,
-defaulting to `/api/contact`:
+A form was carried over anyway, posting JSON to `/api/contact`. Nothing was ever
+built behind that path, so every submission 404ed and showed the error message.
+A form that cannot work is worse than no form, so it came out.
 
-```json
-{
-  "name": "...",
-  "email": "...",
-  "message": "...",
-  "source": "https://www.fjlessing.co.za/"
-}
-```
+Bringing it back needs, in this order:
 
-Any 2xx is treated as success; anything else shows the error message. A
-replacement endpoint (a Nitro server route under `server/api/`, holding the
-webhook URL as a secret and rate-limiting submissions) is a separate ticket.
-Until it exists, the email and phone links in the same section still work.
+1. a delivery channel and its secret — a Slack webhook URL in private
+   `runtimeConfig` (`NUXT_SLACK_WEBHOOK_URL`), never `runtimeConfig.public`,
+   which is serialised into the HTML,
+2. `server/api/contact.post.ts`: validate `name`, `email` and `message`, reject
+   anything else in the body, cap it at about 8 KB, rate limit per source, and
+   return a generic error that never echoes the upstream response,
+3. the markup, which is still in history. `git log --oneline` on
+   `app/components/ContactSection.vue` finds the commit that removed it, and
+   `git show <commit>~1:<that path>` prints the old form.
+
+Rate limiting has to read the **last** entry of `X-Forwarded-For`, not the
+first: Apache's `mod_proxy_http` appends to whatever the client sent, so the
+leading entries are attacker-controlled.
 
 ---
 
