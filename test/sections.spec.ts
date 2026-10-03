@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { describe, expect, it, vi } from 'vitest'
+import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
+import { readBody } from 'h3'
 
 import SiteNavigation from '~/components/SiteNavigation.vue'
 import HeroSection from '~/components/HeroSection.vue'
@@ -137,15 +138,62 @@ describe('site sections', () => {
   })
 
   /**
-   * The form posted to an endpoint that was never built, so every submission
-   * showed the error message. It stays out until a server route exists.
+   * The form came out once because it posted to an endpoint that did not
+   * exist. Without a webhook the endpoint can only fail, so no form.
    */
-  it('Contact ships no form while there is nothing to post to', async () => {
+  it('Contact ships no form when no Slack webhook is configured', async () => {
+    useState('contact-form-enabled').value = false
     const wrapper = await mountSuspended(ContactSection)
 
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.find('input').exists()).toBe(false)
     expect(wrapper.find('textarea').exists()).toBe(false)
+  })
+
+  it('Contact renders a labelled field per form entry when enabled', async () => {
+    useState('contact-form-enabled').value = true
+    const wrapper = await mountSuspended(ContactSection)
+
+    for (const field of CONTACT.form.fields) {
+      const control = wrapper.get(`#contact-${field.name}`)
+      expect(control.attributes('maxlength')).toBe(String(field.maxLength))
+      expect(wrapper.html()).toContain(`for="contact-${field.name}"`)
+    }
+    expect(wrapper.text()).toContain(CONTACT.form.submitLabel)
+
+    // The honeypot is out of the tab order and hidden from assistive tech.
+    const honeypot = wrapper.get('#contact-website')
+    expect(honeypot.attributes('tabindex')).toBe('-1')
+    expect(honeypot.element.closest('[aria-hidden="true"]')).not.toBeNull()
+
+    useState('contact-form-enabled').value = false
+  })
+
+  it('Contact posts the fields to /api/contact and shows the result', async () => {
+    const received: unknown[] = []
+    registerEndpoint('/api/contact', {
+      method: 'POST',
+      handler: async (event) => {
+        received.push(await readBody(event))
+        return { ok: true }
+      },
+    })
+    useState('contact-form-enabled').value = true
+    const wrapper = await mountSuspended(ContactSection)
+
+    await wrapper.get('#contact-name').setValue('Ada')
+    await wrapper.get('#contact-email').setValue('ada@example.com')
+    await wrapper.get('#contact-message').setValue('Hello')
+    await wrapper.get('form').trigger('submit')
+    await vi.waitFor(() =>
+      expect(wrapper.text()).toContain(CONTACT.form.successMessage),
+    )
+
+    expect(received).toEqual([
+      { name: 'Ada', email: 'ada@example.com', message: 'Hello', website: '' },
+    ])
+
+    useState('contact-form-enabled').value = false
   })
 
   it('Footer renders the social links and the current year', async () => {

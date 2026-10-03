@@ -230,33 +230,40 @@ what the previous site used via `lucide-react`.
 
 ## The contact form
 
-**There is no contact form.** The contact section is the email, phone and
-website links, which work without a server.
+The form posts JSON to `/api/contact` (`server/api/contact.post.ts`), which
+relays the message to Slack through an incoming webhook. The email, phone and
+website links sit next to it and work without a server.
 
-The previous site posted a Slack Block Kit payload to `/slack-proxy.php`. A Nitro
-Node server has no PHP runtime, so that endpoint does not exist here, and
-composing the Slack payload in the browser is not worth reproducing. It puts the
-message format in public and turns the proxy into an open relay.
+**The form only appears when the webhook is configured.** Set
+`NUXT_SLACK_WEBHOOK_URL` in the server's environment. It is private
+`runtimeConfig` (`slackWebhookUrl`), never `runtimeConfig.public`, which is
+serialised into the HTML. Without it the endpoint answers 503 and the page
+shows the links only. A form that can only fail is worse than no form.
 
-A form was carried over anyway, posting JSON to `/api/contact`. Nothing was ever
-built behind that path, so every submission 404ed and showed the error message.
-A form that cannot work is worse than no form, so it came out.
+What the endpoint does, in order (`server/utils/contact-handler.ts`):
 
-Bringing it back needs, in this order:
+1. 503 if no webhook is set.
+2. 403 if the request has an `Origin` for another host. Compared on host
+   against `Host`, which Apache keeps with `ProxyPreserveHost On`.
+3. 429 after 5 requests per visitor in 10 minutes, valid or not.
+4. 415 unless the body is `application/json`.
+5. 413 over 8 KB, whether `Content-Length` says so or a chunked body runs over.
+6. 400 unless the body is exactly `name`, `email`, `message` and the honeypot
+   `website`, each within its length limit. Any other key is rejected.
+7. A filled honeypot gets a 200 and nothing is sent.
+8. 429 after 30 messages into Slack in an hour, across all visitors.
+9. The message goes to Slack as plain text, with `&`, `<` and `>` escaped, so
+   a visitor cannot ping `@channel` or plant a disguised link. 5 second
+   timeout, no redirects.
 
-1. a delivery channel and its secret — a Slack webhook URL in private
-   `runtimeConfig` (`NUXT_SLACK_WEBHOOK_URL`), never `runtimeConfig.public`,
-   which is serialised into the HTML,
-2. `server/api/contact.post.ts`: validate `name`, `email` and `message`, reject
-   anything else in the body, cap it at about 8 KB, rate limit per source, and
-   return a generic error that never echoes the upstream response,
-3. the markup, which is still in history. `git log --oneline` on
-   `app/components/ContactSection.vue` finds the commit that removed it, and
-   `git show <commit>~1:<that path>` prints the old form.
+Every failure returns the same body, `{"ok":false,"error":"Message not sent"}`.
+Nothing from Slack, the webhook URL or a stack trace reaches the visitor or the
+log.
 
-Rate limiting has to read the **last** entry of `X-Forwarded-For`, not the
-first: Apache's `mod_proxy_http` appends to whatever the client sent, so the
-leading entries are attacker-controlled.
+The visitor is the **last** entry of `X-Forwarded-For`, and only when the peer
+is loopback (Apache). `mod_proxy_http` appends to whatever the client sent, so
+the leading entries are attacker-controlled. The rate limits live in memory,
+which suits a single Node process; they reset on restart.
 
 ---
 

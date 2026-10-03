@@ -75,6 +75,14 @@ export interface ContactChannel {
   readonly external: boolean
 }
 
+export interface ContactField {
+  readonly name: 'name' | 'email' | 'message'
+  readonly label: string
+  readonly placeholder: string
+  readonly type: 'text' | 'email' | 'textarea'
+  readonly maxLength: number
+}
+
 export interface SiteMeta {
   readonly title: string
   readonly description: string
@@ -157,6 +165,14 @@ export interface ContactContent {
   readonly heading: AccentHeading
   readonly intro: string
   readonly channels: readonly ContactChannel[]
+  readonly form: {
+    readonly label: string
+    readonly fields: readonly ContactField[]
+    readonly submitLabel: string
+    readonly submittingLabel: string
+    readonly successMessage: string
+    readonly errorMessage: string
+  }
 }
 
 export interface FooterContent {
@@ -513,6 +529,38 @@ export const CONTACT: ContactContent = {
       external: true,
     },
   ],
+  // Lengths match the limits in `server/utils/contact.ts`.
+  form: {
+    label: 'Contact form',
+    fields: [
+      {
+        name: 'name',
+        label: 'Name',
+        placeholder: 'Your name',
+        type: 'text',
+        maxLength: 100,
+      },
+      {
+        name: 'email',
+        label: 'Email',
+        placeholder: 'your@email.com',
+        type: 'email',
+        maxLength: 254,
+      },
+      {
+        name: 'message',
+        label: 'Message',
+        placeholder: 'Your message',
+        type: 'textarea',
+        maxLength: 5000,
+      },
+    ],
+    submitLabel: 'Send Message',
+    submittingLabel: 'Sending...',
+    successMessage: "Message sent. I'll get back to you soon.",
+    errorMessage:
+      'Your message was not sent. Please try again later, or email me directly.',
+  },
 }
 
 export const FOOTER: FooterContent = {

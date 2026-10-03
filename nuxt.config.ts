@@ -14,6 +14,15 @@ export default defineNuxtConfig({
     typeCheck: false, // `npm run typecheck` runs vue-tsc; keep dev/build fast.
   },
 
+  runtimeConfig: {
+    /**
+     * Slack incoming-webhook URL for the contact form, set with
+     * `NUXT_SLACK_WEBHOOK_URL`. Private on purpose: anything under `public`
+     * is serialised into every page. Empty means no form.
+     */
+    slackWebhookUrl: '',
+  },
+
   app: {
     head: {
       htmlAttrs: { lang: 'en', class: 'dark' },

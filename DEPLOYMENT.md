@@ -146,11 +146,12 @@ If it serves a page, the output is self-contained.
 
 ### Environment variables
 
-| Variable   | Value        | Notes                                                                                                           |
-| ---------- | ------------ | --------------------------------------------------------------------------------------------------------------- |
-| `HOST`     | `127.0.0.1`  | **Loopback only.** Apache is the public face; the Node server must not accept outside connections.              |
-| `PORT`     | `3000`       | Must match the `ProxyPass` target in the vhost.                                                                 |
-| `NODE_ENV` | `production` | Not strictly required — the build is already a production build — but set it so anything that reads it behaves. |
+| Variable                 | Value                      | Notes                                                                                                                                                 |
+| ------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HOST`                   | `127.0.0.1`                | **Loopback only.** Apache is the public face; the Node server must not accept outside connections.                                                    |
+| `PORT`                   | `3000`                     | Must match the `ProxyPass` target in the vhost.                                                                                                       |
+| `NODE_ENV`               | `production`               | Not strictly required — the build is already a production build — but set it so anything that reads it behaves.                                       |
+| `NUXT_SLACK_WEBHOOK_URL` | Slack incoming-webhook URL | **A secret.** Turns on the contact form. Leave it out and the page shows the email, phone and website links only. See the README, "The contact form". |
 
 Nothing else is read from the environment at runtime.
 
@@ -185,10 +186,13 @@ sudo install -o root -g fjlessing -m 0640 /dev/null /etc/fjlessing-website.env
 HOST=127.0.0.1
 PORT=3000
 NODE_ENV=production
+# The contact form. Paste the webhook URL from Slack; leave the line out for no form.
+NUXT_SLACK_WEBHOOK_URL=
 ```
 
-Mode `0640` root:fjlessing — the service reads it, nobody else does. If a secret
-ever belongs in here, this is already the right permission.
+Mode `0640` root:fjlessing — the service reads it, nobody else does. That is
+the right permission for the webhook URL, which is a secret: anyone who has it
+can post into the channel. Restart the service after changing it.
 
 ### systemd unit
 
