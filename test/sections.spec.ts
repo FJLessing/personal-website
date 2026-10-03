@@ -83,7 +83,12 @@ describe('site sections', () => {
     }
     for (const aside of ABOUT.asides) {
       expect(text).toContain(aside.title)
+      for (const line of aside.lines) {
+        expect(text).toContain(line)
+      }
     }
+    // The employer is spelled BRAVE Digital, never Brave Digital.
+    expect(text).not.toContain('Brave Digital')
   })
 
   it('Experience renders every role with its tech tags', async () => {
@@ -92,12 +97,14 @@ describe('site sections', () => {
 
     for (const entry of EXPERIENCE.entries) {
       expect(text).toContain(entry.role)
+      expect(text).toContain(entry.company)
       expect(text).toContain(entry.period)
       expect(text).toContain(entry.description)
       for (const tech of entry.tech) {
         expect(text).toContain(tech)
       }
     }
+    expect(text).not.toContain('Brave Digital')
   })
 
   it('Skills renders every category and skill', async () => {

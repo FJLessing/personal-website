@@ -330,7 +330,7 @@ export const ABOUT: AboutContent = {
     {
       title: 'Contact',
       lines: [
-        'Pretoria, South Africa',
+        `${SITE_META.locality}, ${SITE_META.country}`,
         'me@fjlessing.co.za',
         '+27 83 233 6448',
       ],
