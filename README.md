@@ -12,7 +12,10 @@ MUI, Radix/shadcn, chart, carousel or drag-and-drop packages came across.
 ## Requirements
 
 - Node 20.19+ (CI and the `.nvmrc` here use Node 22)
-- npm 10+
+- npm 11+ — the committed lockfile is written by npm 11, and npm 10 rejects it
+  with a phantom "missing from lock file" error. CI pins npm 11 for the same
+  reason. Node 22 bundles npm 10, so run `npm install -g npm@11` if `npm -v`
+  reports 10.x.
 
 ## Running it locally
 
