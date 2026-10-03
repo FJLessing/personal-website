@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { BackgroundVariant } from '~/utils/backgrounds/scene'
+
 /**
  * Mount boundary for the animated background.
  *
@@ -9,17 +11,15 @@
  * by `app.vue` so the page looks right with JavaScript disabled or still
  * loading.
  *
- * It is deliberately empty. The replacement for the old `GameOfLifeBackground`
- * is a separate task and drops straight in here — no other file needs to
- * change.
- *
- * Whatever lands here must:
- *   - cap work on small screens,
- *   - pause when `document.visibilityState !== 'visible'`,
- *   - honour `prefers-reduced-motion: reduce`,
- *   - stay behind the content (`-z-10`) and never capture pointer events that
- *     belong to the page.
+ * While the three replacement concepts are up for a decision, which one mounts
+ * comes from the route: the demo pages under `/bg/*` set `background` in their
+ * page meta, and the real page sets nothing, so it keeps the empty slot. Once
+ * the owner picks, this collapses to the single chosen component.
  */
+const route = useRoute()
+const variant = computed<BackgroundVariant | null>(
+  () => route.meta.background ?? null,
+)
 </script>
 
 <template>
@@ -27,5 +27,9 @@
     aria-hidden="true"
     class="pointer-events-none fixed inset-0 -z-10"
     data-testid="site-background"
-  />
+  >
+    <BackgroundContour v-if="variant === 'contour'" />
+    <BackgroundGlyphs v-else-if="variant === 'glyphs'" />
+    <BackgroundAurora v-else-if="variant === 'aurora'" />
+  </div>
 </template>

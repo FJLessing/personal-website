@@ -22,6 +22,7 @@
     "format:check": "prettier --check .",
     "typecheck": "nuxt typecheck",
     "test": "vitest run",
+    "bg:cost": "vite-node scripts/background-cost.ts",
     "test:watch": "vitest"
   },
   "devDependencies": {
