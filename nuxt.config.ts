@@ -108,10 +108,14 @@ export default defineNuxtConfig({
    * The dev server runs inside a Docker container, so it has to listen on all
    * interfaces to be reachable from the host. Port is fixed so the published
    * container port never moves.
+   *
+   * 3101, not Nuxt's default 3000: 3000 is already taken on the Docker host,
+   * so a dev server bound there is unreachable from outside the container.
+   * 3100 is Paperclip. Use 3101-3105; override with NUXT_DEV_PORT.
    */
   devServer: {
     host: '0.0.0.0',
-    port: Number(process.env.NUXT_DEV_PORT || 3000),
+    port: Number(process.env.NUXT_DEV_PORT || 3101),
   },
 
   vite: {

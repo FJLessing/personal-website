@@ -18,8 +18,13 @@ MUI, Radix/shadcn, chart, carousel or drag-and-drop packages came across.
 
 ```bash
 npm ci          # installs from the lockfile; `nuxt prepare` runs on postinstall
-npm run dev     # http://localhost:3000
+npm run dev     # http://localhost:3101
 ```
+
+The dev server binds `0.0.0.0:3101`, not Nuxt's default 3000 — port 3000 is
+already in use on the Docker host, so anything bound there is unreachable from
+outside the container, and 3100 is Paperclip. Override with `NUXT_DEV_PORT`,
+staying inside 3101-3105.
 
 Other scripts:
 
