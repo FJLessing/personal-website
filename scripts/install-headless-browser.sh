@@ -92,10 +92,22 @@ EOF
 fi
 
 # ----------------------------------------------------------------- 2. driver
-if [ -d "$DRIVER/node_modules/playwright-core" ]; then
-  step "playwright-core already installed, skipping"
+# Compare the installed version, not just its presence: an install from before
+# the pin (or from an older pin) would otherwise stay put until --force.
+INSTALLED_PLAYWRIGHT=""
+if [ -f "$DRIVER/node_modules/playwright-core/package.json" ]; then
+  INSTALLED_PLAYWRIGHT="$(node -p "require('$DRIVER/node_modules/playwright-core/package.json').version" 2>/dev/null || true)"
+fi
+DRIVER_CHANGED=0
+if [ "$INSTALLED_PLAYWRIGHT" = "$PLAYWRIGHT_VERSION" ]; then
+  step "playwright-core $PLAYWRIGHT_VERSION already installed, skipping"
 else
-  step "Installing playwright-core (outside the project's package.json)"
+  if [ -n "$INSTALLED_PLAYWRIGHT" ]; then
+    step "Replacing playwright-core $INSTALLED_PLAYWRIGHT with $PLAYWRIGHT_VERSION"
+  else
+    step "Installing playwright-core (outside the project's package.json)"
+  fi
+  DRIVER_CHANGED=1
   [ -f "$DRIVER/package.json" ] || cat > "$DRIVER/package.json" <<'EOF'
 {
   "name": "headless-browser-driver",
@@ -105,13 +117,16 @@ else
 EOF
   # Pinned and exact, not @latest. This package downloads a browser binary and
   # then runs it, so whatever @latest resolves to on the day is what executes.
-  # Bump PLAYWRIGHT_VERSION deliberately and re-run with --force. The audit
+  # Bump PLAYWRIGHT_VERSION deliberately and re-run; the version check above
+  # replaces the old one. The audit
   # output is left on, which is why there is no --no-audit here.
   (cd "$DRIVER" && npm install --no-fund --save-exact "playwright-core@$PLAYWRIGHT_VERSION")
 fi
 
 # ---------------------------------------------------------------- 3. chromium
-if compgen -G "$BROWSERS/chromium-*/chrome-linux64/chrome" > /dev/null; then
+# A new driver may want a different Chromium revision. `install chromium` is
+# idempotent, so after a driver change it is always run.
+if [ "$DRIVER_CHANGED" = 0 ] && compgen -G "$BROWSERS/chromium-*/chrome-linux64/chrome" > /dev/null; then
   step "Chromium already downloaded, skipping"
 else
   step "Downloading Chromium"
