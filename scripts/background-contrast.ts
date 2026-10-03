@@ -2,8 +2,8 @@
  * Prints how visible the background's highlights are, and how much room they
  * leave the text on top. Run with `npm run bg:contrast`.
  *
- * Two columns matter. "vs backdrop" is whether you can see the thing at all —
- * under about 1.1:1 a one-pixel line vanishes into 8-bit quantisation. "white"
+ * Two columns matter. "vs backdrop" is whether you can see the thing at all.
+ * Under about 1.1:1 a one-pixel line vanishes into 8-bit quantisation. "white"
  * and "yellow" are the WCAG AA ratios for text sitting directly on the
  * brightest pixel the layer draws; yellow-500 on amber is the tightest pairing
  * on the page, so it is the one that sets the ceiling.

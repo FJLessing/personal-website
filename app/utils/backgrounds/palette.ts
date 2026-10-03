@@ -11,7 +11,7 @@
  *
  *   - **Floor.** The faintest thing the background draws must clear
  *     {@link MIN_VISIBLE_CONTRAST} against the backdrop. Below roughly 1.1:1 a
- *     one-pixel line disappears into 8-bit quantisation and panel dither — it
+ *     one-pixel line disappears into 8-bit quantisation and panel dither. It
  *     renders, but nobody sees it.
  *   - **Ceiling.** The brightest pixel the background draws must stay under
  *     {@link MAX_HIGHLIGHT_LUMINANCE}, which is where 14px yellow-500 text

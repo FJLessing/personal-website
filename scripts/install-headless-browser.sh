@@ -38,7 +38,7 @@ BROWSERS="$HEADLESS_BROWSER_HOME/browsers"
 WORK="$HEADLESS_BROWSER_HOME/.apt"
 
 # Chromium's shared-library dependencies on Debian 13 (trixie), plus two font
-# packages — without them every glyph renders as a blank box.
+# packages. Without them every glyph renders as a blank box.
 APT_PACKAGES=(
   libnss3 libnspr4
   libatk1.0-0t64 libatk-bridge2.0-0t64 libatspi2.0-0t64

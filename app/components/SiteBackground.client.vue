@@ -12,8 +12,8 @@ import { createContourScene } from '~/utils/backgrounds/contourScene'
  * backdrop is painted by `app.vue`, so the page looks right with JavaScript
  * disabled or still loading.
  *
- * Everything the background has to obey — reduced motion, pausing when hidden
- * or off-screen, capping the backing store, cutting work on small screens —
+ * Everything the background has to obey (reduced motion, pausing when hidden
+ * or off-screen, capping the backing store, cutting work on small screens)
  * lives in `useBackgroundCanvas`. This component is the mount boundary and the
  * `aria-hidden` wrapper, nothing more.
  */

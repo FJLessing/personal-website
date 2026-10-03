@@ -5,9 +5,9 @@ import { useBackgroundCanvas } from '~/composables/useBackgroundCanvas'
 import type { BackgroundScene, SceneSize } from '~/utils/backgrounds/scene'
 
 /**
- * The hard requirements that are not about what the background looks like —
- * reduced motion, pausing when hidden or off-screen, capping the backing store
- * on a phone — all live in `useBackgroundCanvas`. They are also the ones most
+ * The hard requirements that are not about what the background looks like
+ * (reduced motion, pausing when hidden or off-screen, capping the backing
+ * store on a phone) all live in `useBackgroundCanvas`. They are also the ones most
  * easily broken by a later edit and least likely to be noticed, because a
  * background that animates when it should not looks exactly like one that
  * works.
@@ -313,7 +313,7 @@ describe('background canvas runtime', () => {
       await mountCanvas(harness.scene)
 
       // 15fps is a ~66.7ms interval, so a frame 40ms after the last one is
-      // still dropped — at the desktop rate it would have been drawn.
+      // still dropped, though at the desktop rate it would have been drawn.
       harness.tick(10)
       expect(harness.frames()).toBe(1)
       harness.tick(50)

@@ -3,8 +3,8 @@
  * concept.
  *
  * A scene is a plain module, not a component. It never touches the DOM beyond
- * the 2D context it is handed, so every SSR-unsafe thing — `window`,
- * `document`, `requestAnimationFrame`, media queries — stays in the runtime,
+ * the 2D context it is handed, so every SSR-unsafe thing (`window`,
+ * `document`, `requestAnimationFrame`, media queries) stays in the runtime,
  * and the scene itself can be driven from Node against a stub context to count
  * draw calls and measure frame cost.
  */

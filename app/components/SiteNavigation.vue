@@ -4,7 +4,7 @@ import { NAVIGATION } from '~/content/site'
 /**
  * The nav links are hash-only (`#about`), which is right on the single-page
  * home route and dead anywhere else. `base` is prefixed to every target so a
- * page that is not `/` — the error page — can emit `/#about` instead.
+ * page that is not `/`, which is the error page, can emit `/#about` instead.
  */
 const props = withDefaults(defineProps<{ base?: string }>(), { base: '' })
 

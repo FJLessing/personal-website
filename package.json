@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "fjlessing.co.za — Nuxt 4 / Vue 3 personal site with server-side rendering.",
+  "description": "fjlessing.co.za, a Nuxt 4 / Vue 3 personal site with server-side rendering.",
   "license": "UNLICENSED",
   "author": "FJ Lessing <me@fjlessing.co.za>",
   "engines": {

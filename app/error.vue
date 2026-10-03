@@ -33,13 +33,13 @@ const diagnostics = computed(() => {
   const lines = [props.error?.statusMessage, props.error?.message].filter(
     (line): line is string => Boolean(line),
   )
-  return [...new Set(lines)].join(' — ')
+  return [...new Set(lines)].join(' | ')
 })
 
 /**
  * Plain anchors, so both links still work with JavaScript off or still
  * loading. When Vue is running, clearing the error and routing is smoother
- * than a full document load — but an unmodified left click only, so
+ * than a full document load, but an unmodified left click only, so
  * ctrl/cmd-click still opens a new tab.
  */
 const navigate = (event: MouseEvent, to: string) => {

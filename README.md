@@ -1,6 +1,6 @@
 # personal-website
 
-[fjlessing.co.za](https://www.fjlessing.co.za) — a Nuxt 4 / Vue 3 site rendered on
+[fjlessing.co.za](https://www.fjlessing.co.za) is a Nuxt 4 / Vue 3 site rendered on
 the server, running as a long-lived Node process behind an Apache reverse proxy.
 
 This replaces the earlier React + Vite build
@@ -21,7 +21,7 @@ npm ci          # installs from the lockfile; `nuxt prepare` runs on postinstall
 npm run dev     # http://localhost:3101
 ```
 
-The dev server binds `0.0.0.0:3101`, not Nuxt's default 3000 — port 3000 is
+The dev server binds `0.0.0.0:3101`, not Nuxt's default 3000. Port 3000 is
 already in use on the Docker host, so anything bound there is unreachable from
 outside the container, and 3100 is Paperclip. Override with `NUXT_DEV_PORT`,
 staying inside 3101-3105.
@@ -30,7 +30,7 @@ Other scripts:
 
 | Script              | What it does                                               |
 | ------------------- | ---------------------------------------------------------- |
-| `npm run build`     | Production build — a Node SSR server in `.output/`         |
+| `npm run build`     | Production build, a Node SSR server in `.output/`          |
 | `npm run preview`   | Serves the last build (`.output/server/index.mjs`)         |
 | `npm run lint`      | ESLint                                                     |
 | `npm run format`    | Prettier, writing in place (`format:check` to verify only) |
@@ -75,7 +75,7 @@ The installer exists because this project is developed in a Debian container
 with no browser, no X server and no root. It unpacks Chromium's shared
 libraries into a private sysroot with `dpkg-deb -x` and fetches Playwright's
 Chromium build beside the checkout, at `../.tools/headless-browser`. Nothing is
-installed system-wide and **nothing is added to `package.json`** — `npm ci`
+installed system-wide and **nothing is added to `package.json`**. `npm ci`
 still installs the same dependency tree it did before. Set
 `HEADLESS_BROWSER_HOME` to put it somewhere else; re-running the installer
 skips whatever is already in place, and `--force` redoes it.
@@ -137,7 +137,7 @@ filled in.
 ### The background
 
 `app/components/SiteBackground.client.vue` draws **Contour**: a slow
-topographic height field — four soft peaks drifting on Lissajous paths —
+topographic height field of four soft peaks drifting on Lissajous paths,
 sampled onto a grid and traced as isolines with marching squares. The cursor
 presses a dent into the terrain, so the lines bunch up around it.
 
@@ -151,11 +151,11 @@ JavaScript disabled or still loading. It is `aria-hidden`, it is
 That wrapper in `app.vue` carries `isolate`, and it has to. Without a stacking
 context on it, its own background paints _after_ its negative-z-index
 children, so the background layer ends up underneath the page colour. It still
-renders — it is just multiplied down to a tenth of its brightness, which looks
+renders, just multiplied down to a tenth of its brightness, which looks
 like a background that does not work rather than one that is mis-stacked.
 
 The split is deliberate. `app/utils/backgrounds/contourScene.ts` is a plain
-module that only ever touches a 2D context — no DOM, no timers — which is what
+module that only ever touches a 2D context, with no DOM and no timers, which is what
 lets it be driven from Node to measure cost. Everything browser-shaped lives in
 `app/composables/useBackgroundCanvas.ts`, and that is where the rules are
 enforced in one place: `prefers-reduced-motion: reduce` draws a single still
@@ -187,7 +187,7 @@ goes live.
 
 The previous site posted a Slack Block Kit payload to `/slack-proxy.php`. A Nitro
 Node server has no PHP runtime, so that endpoint does not exist here, and
-composing the Slack payload in the browser is not worth reproducing — it puts the
+composing the Slack payload in the browser is not worth reproducing. It puts the
 message format in public and turns the proxy into an open relay.
 
 The form now POSTs JSON to whatever `NUXT_PUBLIC_CONTACT_ENDPOINT` points at,
@@ -203,15 +203,15 @@ defaulting to `/api/contact`:
 ```
 
 Any 2xx is treated as success; anything else shows the error message. A
-replacement endpoint — a Nitro server route under `server/api/`, holding the
-webhook URL as a secret and rate-limiting submissions — is a separate ticket.
+replacement endpoint (a Nitro server route under `server/api/`, holding the
+webhook URL as a secret and rate-limiting submissions) is a separate ticket.
 Until it exists, the email and phone links in the same section still work.
 
 ---
 
 ## Deploying
 
-**The step-by-step server guide is [`DEPLOYMENT.md`](DEPLOYMENT.md)** — Apache
+**The step-by-step server guide is [`DEPLOYMENT.md`](DEPLOYMENT.md)**. It covers Apache
 modules, the vhost, TLS, the systemd unit, security headers, verification,
 updates and rollback. This section covers only what the build produces; it does
 not repeat any of that.
@@ -228,7 +228,7 @@ server to `.output/`:
 .output/
   nitro.json                    build metadata (preset, versions)
   public/                       static assets, served by the Node server
-  server/index.mjs              the entry point — this is what you run
+  server/index.mjs              the entry point, this is what you run
 ```
 
 `/` is prerendered at build time, so the first hit is served from a cached HTML
@@ -244,7 +244,7 @@ npm run build
 PORT=3000 HOST=127.0.0.1 node .output/server/index.mjs
 ```
 
-It prints `Listening on http://127.0.0.1:3000` and serves the whole site —
+It prints `Listening on http://127.0.0.1:3000` and serves the whole site.
 `.output/` is self-contained, so `node_modules` is not needed at runtime.
 
 | Variable | Default              | What it does                     |
@@ -262,7 +262,7 @@ terminates TLS on the vhost and reverse-proxies to that port. Nothing but the
 proxy should be able to reach the Node process.
 
 The Node process is long-lived and nothing restarts it on its own, so a service
-manager — systemd on the target host — has to start it at boot and restart it on
+manager, systemd on the target host, has to start it at boot and restart it on
 failure. Without that the site is down after the first reboot or crash.
 
 [`DEPLOYMENT.md`](DEPLOYMENT.md) has the whole procedure: which Apache modules
@@ -290,9 +290,9 @@ A full `npm audit` currently reports 12 high-severity advisories, all of them in
 Nuxt's own build-time tree and all tracing to two packages with **no fixed
 release available**:
 
-- `braces` (via `micromatch` → `fast-glob` → `globby`) — stack exhaustion on
+- `braces` (via `micromatch`, `fast-glob`, `globby`): stack exhaustion on
   deeply nested glob patterns.
-- `node-forge` (via `listhen` → `@nuxt/cli`, `nitropack`) — used to mint a
+- `node-forge` (via `listhen`, `@nuxt/cli`, `nitropack`): used to mint a
   self-signed certificate for `nuxt dev --https`.
 
 npm's suggested remedy is a downgrade to `nuxt@3.15.1`, which is not an option.
@@ -308,7 +308,7 @@ versions upstream.
 - **No browser globals at module scope.** `window`, `document`, `navigator` and
   `localStorage` go inside event handlers, `onMounted`, or a `.client` component.
 - **Server and first client render must match.** No `Math.random()` or
-  `Date.now()` in a render without a stable seed — the footer year goes through
+  `Date.now()` in a render without a stable seed. The footer year goes through
   `useState` for exactly this reason. `test/hydration.spec.ts` enforces it, and
   carries a deliberately non-deterministic control case so the check cannot pass
   vacuously.

@@ -10,7 +10,7 @@ const status = ref<SubmitStatus>('idle')
 /**
  * Where the form posts. The reference site posts to a PHP endpoint that
  * forwards to Slack; a Nitro Node server cannot run PHP, so the target is
- * configurable via `NUXT_PUBLIC_CONTACT_ENDPOINT`. See README — a replacement
+ * configurable via `NUXT_PUBLIC_CONTACT_ENDPOINT`. See README: a replacement
  * endpoint is a separate ticket.
  */
 const endpoint = useRuntimeConfig().public.contactEndpoint

@@ -21,7 +21,7 @@ import type { BackgroundScene, SceneSize } from '../app/utils/backgrounds/scene'
 /**
  * The scene is a plain module that only ever touches a 2D context, which is the
  * whole point of the `BackgroundScene` contract: a counting stub is enough to
- * assert the two things that actually matter for a decorative background —
+ * assert the two things that actually matter for a decorative background:
  * that it draws something, and that a phone does meaningfully less work than a
  * desktop. `npm run bg:cost` prints the same counts with timings.
  */
@@ -141,7 +141,7 @@ describe('background colour budget', () => {
   it('composites against the backdrop the page actually paints', () => {
     // The whole budget is arithmetic over one assumed base colour. If app.vue
     // changes that colour and nothing else, every number above is wrong, and
-    // silently so — which is exactly how the first round ended up invisible.
+    // silently so, which is exactly how the first round ended up invisible.
     // `import.meta.url` is not a file URL under the happy-dom environment, so
     // resolve from the Vitest root instead.
     const appVue = readFileSync(resolve(process.cwd(), 'app/app.vue'), 'utf8')

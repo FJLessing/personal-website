@@ -2,7 +2,7 @@ import { ACCENT, CONTOUR_ALPHA_HIGH, CONTOUR_ALPHA_LOW, rgba } from './palette'
 import type { BackgroundScene, SceneSize } from './scene'
 
 /**
- * Concept one — "Contour".
+ * Concept one, "Contour".
  *
  * A slow height field drawn as topographic isolines. Four soft peaks drift on
  * Lissajous paths; the cursor presses a dent into the terrain so the lines

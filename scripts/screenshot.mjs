@@ -135,7 +135,7 @@ for (const width of widths) {
 
   // Chromium logs the document's own non-2xx status to the console. When the
   // page under test *is* an error page, that entry is the thing we asked for,
-  // not a defect — drop it, keep everything else.
+  // not a defect, so drop it and keep everything else.
   const selfStatus = `status of ${response?.status()}`
   for (const msg of consoleMessages) {
     if (
@@ -172,14 +172,14 @@ for (const width of widths) {
       `horizontal overflow: ${overflow}px past the ${width}px viewport`,
     )
   if (metrics.sampleTextWidth === 0)
-    problems.push('text measured 0px wide — no font was available')
+    problems.push('text measured 0px wide, no font was available')
   if (response && !response.ok() && response.status() < 400)
     problems.push(`unexpected status ${response.status()}`)
 
   const file = path.join(outDir, `${label}-${width}.png`)
   await page.screenshot({ path: file, fullPage: true })
 
-  console.log(`\n${width}px — HTTP ${response?.status()} — "${metrics.title}"`)
+  console.log(`\n${width}px, HTTP ${response?.status()}, "${metrics.title}"`)
   console.log(
     `  page height ${metrics.scrollHeight}px, text probe ${metrics.sampleTextWidth}px wide`,
   )
@@ -196,6 +196,6 @@ for (const width of widths) {
 
 await browser.close()
 console.log(
-  failed ? '\nFAIL — see PROBLEM lines above' : '\nOK — all viewports clean',
+  failed ? '\nFAIL: see PROBLEM lines above' : '\nOK: all viewports clean',
 )
 process.exit(failed ? 1 : 0)

@@ -6,7 +6,7 @@ import { SKIP_LINK_LABEL } from '~/content/site'
   <!--
     `isolate` is load-bearing. Without it this element never forms a stacking
     context, so its own background paints *after* its negative-z-index
-    children — the background canvas ended up underneath the page colour and
+    children. The background canvas ended up underneath the page colour and
     was multiplied down to roughly a tenth of its intended brightness. With
     `isolate`, the order inside this element is: this background, then the
     `-z-10` background layer, then the content.
