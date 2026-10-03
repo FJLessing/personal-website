@@ -358,20 +358,30 @@ tag.
 changes. There are no runtime `dependencies` in this repo, so that covers
 everything that reaches a browser or the Node server.
 
-A full `npm audit` currently reports 12 high-severity advisories, all of them in
-Nuxt's own build-time tree and all tracing to two packages with **no fixed
-release available**:
+A full `npm audit` reports 12 high-severity advisories, all of them in Nuxt's
+own build-time tree and all tracing to two packages. Both are **accepted**, not
+outstanding: there is no fixed release to move to, and npm's suggested remedy is
+a downgrade to `nuxt@3.15.1`, which is not an option.
 
-- `braces` (via `micromatch`, `fast-glob`, `globby`): stack exhaustion on
-  deeply nested glob patterns.
-- `node-forge` (via `listhen`, `@nuxt/cli`, `nitropack`): used to mint a
-  self-signed certificate for `nuxt dev --https`.
+| Advisory                                                                 | Package                | Installed      | Fixed in | Why it is accepted                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------ | ---------------------- | -------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | `braces` (CWE-674)     | 3.0.3 (latest) | none yet | Stack exhaustion on a deeply nested glob pattern. Reached only through `micromatch` → `fast-glob` → `globby` → `nitropack` at build time, over patterns that come from our own config, never from a request.                                                |
+| [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv) | `node-forge` (CWE-347) | 1.4.0 (latest) | none yet | Lax PKCS#1 v1.5 signature verification. Reached only through `listhen` → `@nuxt/cli`, which uses `node-forge` to _mint_ a self-signed certificate for `nuxt dev --https`. We verify no signatures with it, and it never runs outside a developer's machine. |
 
-npm's suggested remedy is a downgrade to `nuxt@3.15.1`, which is not an option.
-Neither package runs in production, and neither processes untrusted input during
-our build. CI reports the full audit on every run without failing on it, so a
-genuinely new advisory is still visible. Revisit when Nuxt picks up fixed
-versions upstream.
+The acceptance rests on one premise: both packages are dev/build-only, so
+nothing they touch reaches a browser or the Node server.
+`test/dependency-audit.spec.ts` pins that premise — it fails if the repo gains a
+runtime `dependency` or if either package stops resolving as `dev` in
+`package-lock.json`. CI also reports the full audit on every run without failing
+on it, so a genuinely new advisory is still visible.
+
+Residual risk: a pull request can still make CI's own `npm run build` spend
+effort on a hostile glob pattern. The job is `contents: read`, carries no write
+token, and the worst case is a failed build on a throwaway runner.
+
+Last reviewed 2026-10-04 against commit `792a163`: 12 high, 0 critical, 0
+moderate, 0 low; `npm audit --omit=dev` found 0. Revisit when Nuxt picks up
+fixed versions upstream.
 
 ---
 
