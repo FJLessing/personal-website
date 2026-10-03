@@ -1,0 +1,24 @@
+{
+  "name": "FJ Lessing - Full-Stack Developer & Head of Development",
+  "short_name": "FJ Lessing",
+  "description": "Head of Development at BRAVE Digital with expertise in full-stack development, mobile applications, and cloud infrastructure.",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png", 
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#ffc614",
+  "background_color": "#18181b",
+  "display": "standalone",
+  "start_url": "/",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["portfolio", "professional", "technology"]
+}
