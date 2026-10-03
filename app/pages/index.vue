@@ -28,8 +28,6 @@ useSeoMeta({
   twitterDescription: SITE_META.socialDescription,
   twitterImage: SITE_META.image,
   twitterImageAlt: SITE_META.imageAlt,
-  twitterSite: SITE_META.twitterHandle,
-  twitterCreator: SITE_META.twitterHandle,
 })
 
 /**
@@ -64,6 +62,11 @@ useHead({
             alumniOf: {
               '@type': 'CollegeOrUniversity',
               name: SITE_META.alumniOf,
+            },
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: SITE_META.locality,
+              addressCountry: SITE_META.countryCode,
             },
             url: pageUrl,
             mainEntityOfPage: pageUrl,

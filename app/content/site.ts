@@ -99,9 +99,12 @@ export interface SiteMeta {
   readonly imageHeight: number
   readonly locale: string
   readonly themeColor: string
-  readonly twitterHandle: string
   readonly jobTitle: string
   readonly employer: string
+  /** Where FJ is based, for the `Person` address. */
+  readonly locality: string
+  readonly country: string
+  readonly countryCode: string
   /** The one institution the About section names, for structured data. */
   readonly alumniOf: string
   readonly socialProfiles: readonly string[]
@@ -214,7 +217,7 @@ export interface ErrorContent {
 }
 
 export const SITE_META: SiteMeta = {
-  title: 'FJ Lessing - Head of Development | Full-Stack & Agentic Development',
+  title: 'FJ Lessing - Head of Development at BRAVE Digital',
   description:
     'FJ Lessing, Head of Development at BRAVE Digital. Leads a developer team, designs how agentic workflows fit that work, and builds full-stack and cloud software.',
   keywords:
@@ -228,9 +231,11 @@ export const SITE_META: SiteMeta = {
   imageHeight: 617,
   locale: 'en_US',
   themeColor: '#ffc614',
-  twitterHandle: '@FJLessing',
   jobTitle: 'Head of Development',
   employer: 'BRAVE Digital',
+  locality: 'Pretoria',
+  country: 'South Africa',
+  countryCode: 'ZA',
   alumniOf: 'University of Pretoria',
   socialProfiles: [
     'https://www.linkedin.com/in/fj-lessing/',
@@ -250,7 +255,7 @@ export const SITE_META: SiteMeta = {
     'DevOps',
   ],
   socialDescription:
-    'Head of Development at BRAVE Digital. Leads a team of developers and the agentic workflows around them, on top of full-stack, mobile and cloud engineering.',
+    'Head of Development at BRAVE Digital. Leads a developer team and designs how agentic workflows fit that work, on top of full-stack, mobile and cloud engineering.',
 }
 
 export const NAVIGATION: NavigationContent = {
@@ -275,7 +280,7 @@ export const NAVIGATION: NavigationContent = {
 }
 
 export const HERO: HeroContent = {
-  eyebrow: 'Head of Development at BRAVE',
+  eyebrow: 'Head of Development at BRAVE Digital',
   greeting: "Hi, I'm",
   name: 'FJ Lessing',
   /**
@@ -312,7 +317,7 @@ export const HERO: HeroContent = {
 export const ABOUT: AboutContent = {
   heading: { lead: 'About ', accent: 'Me' },
   paragraphs: [
-    'As Head of Development at Brave Digital I lead a team of developers delivering software for a diverse client base. I scope and architect projects, guide technical strategy, look after developer growth and wellbeing, and make sure we ship quality work on time and on budget.',
+    'As Head of Development at BRAVE Digital I lead a team of developers delivering software for a diverse client base. I scope and architect projects, guide technical strategy, look after developer growth and wellbeing, and make sure we ship quality work on time and on budget.',
     'A growing part of that job is managing agents as well as developers: deciding where an agent is given work, how it is given context, how far it is trusted to act on its own, and how its output is reviewed before it reaches a client. I build these workflows with Claude, Gemini and OpenCode, prove them out on personal projects in my homelab, and bring into the team only what holds up. So far they have paid off most in AI-driven data manipulation and porting, AI-assisted test development, and scoping and documentation.',
     'All of that sits on full-stack experience with Laravel, Node.js, Vue and React, mobile apps with Flutter, React Native and Swift, and DevOps across web servers, cloud infrastructure and deployment.',
   ],
@@ -324,7 +329,11 @@ export const ABOUT: AboutContent = {
     },
     {
       title: 'Contact',
-      lines: ['me@fjlessing.co.za', '+27 83 233 6448'],
+      lines: [
+        'Pretoria, South Africa',
+        'me@fjlessing.co.za',
+        '+27 83 233 6448',
+      ],
     },
     {
       title: 'Code',
@@ -343,7 +352,7 @@ export const EXPERIENCE: ExperienceContent = {
   entries: [
     {
       role: 'Head of Development',
-      company: 'Brave Digital',
+      company: 'BRAVE Digital',
       period: '2021 - Present',
       description:
         "Lead a team of around 5-10 developers. I set how we adopt AI and agentic development across the team's process: how context is given, how agents are set up, where an agent is trusted to act on its own, and how AI-generated code is reviewed for correctness before it reaches a client. That runs alongside scoping and architecting projects, technical strategy, developer growth and delivery quality. I manage DevOps including web servers, cloud infrastructure and app deployment, and still work as a senior developer on projects to help the team hit budgets and deadlines.",
@@ -362,7 +371,7 @@ export const EXPERIENCE: ExperienceContent = {
     },
     {
       role: 'Full-Stack Developer',
-      company: 'Brave Digital',
+      company: 'BRAVE Digital',
       period: '2015 - 2021',
       description:
         'Worked as a full-stack software developer using Laravel, NodeJS, Vue, and React. Developed mobile apps with Flutter, React Native, Cordova, and Swift. Worked on complex software solutions for startups and corporate clients. Developed experimental projects including Unity and VR applications.',
