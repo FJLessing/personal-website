@@ -12,6 +12,7 @@ import {
   escapeSlackText,
   isSameOrigin,
   parseContactMessage,
+  rateKey,
   slackPayload,
 } from '../server/utils/contact'
 import {
@@ -81,6 +82,8 @@ describe('Slack payload', () => {
       isBot: false,
     })
     expect(payload.mrkdwn).toBe(false)
+    expect(payload.unfurl_links).toBe(false)
+    expect(payload.unfurl_media).toBe(false)
     expect(payload.text).not.toMatch(/<[!@]/)
     expect(payload.text).toContain('&lt;!here&gt;')
   })
@@ -98,6 +101,32 @@ describe('clientSource', () => {
 
   it('ignores X-Forwarded-For from anyone but loopback', () => {
     expect(clientSource('198.51.100.7', '203.0.113.9')).toBe('198.51.100.7')
+  })
+})
+
+describe('rateKey', () => {
+  it('leaves IPv4 alone, and unwraps IPv4-mapped IPv6', () => {
+    expect(rateKey('203.0.113.9')).toBe('203.0.113.9')
+    expect(rateKey('::ffff:203.0.113.9')).toBe('203.0.113.9')
+    expect(rateKey('unknown')).toBe('unknown')
+  })
+
+  it('keys IPv6 on the /64, in any spelling', () => {
+    const key = '2001:db8:dead:beef::/64'
+    expect(rateKey('2001:db8:dead:beef::1001')).toBe(key)
+    expect(rateKey('2001:db8:dead:beef:ffff:1:2:3')).toBe(key)
+    expect(rateKey('2001:0DB8:DEAD:BEEF:0000:0000:0000:0001')).toBe(key)
+    expect(rateKey('2001:db8:dead:beef::1%eth0')).toBe(key)
+    expect(rateKey('2001:db8:dead:bef0::1')).not.toBe(key)
+  })
+
+  it('expands :: in the first four groups', () => {
+    expect(rateKey('2001:db8::1')).toBe('2001:db8:0:0::/64')
+    expect(rateKey('2001:db8::')).toBe('2001:db8:0:0::/64')
+    expect(rateKey('2001:db8::5:0:0:0:1')).toBe('2001:db8:0:5::/64')
+    expect(rateKey('fe80::1%eth0')).toBe('fe80:0:0:0::/64')
+    expect(rateKey('::1')).toBe('0:0:0:0::/64')
+    expect(rateKey('64:ff9b::192.0.2.1')).toBe('64:ff9b:0:0::/64')
   })
 })
 
@@ -133,18 +162,24 @@ describe('createRateLimiter', () => {
     expect(limiter.hit('a')).toBe(true)
   })
 
-  it('refuses new keys when the table is full of live ones', () => {
+  it('drops the oldest key, not the new visitor, when the table is full', () => {
+    let time = 0
     const limiter = createRateLimiter({
-      limit: 5,
+      limit: 1,
       windowMs: 1000,
       maxKeys: 2,
-      now: () => 0,
+      now: () => time,
     })
-    expect([limiter.hit('a'), limiter.hit('b'), limiter.hit('c')]).toEqual([
-      true,
-      true,
-      false,
-    ])
+    expect(limiter.hit('a')).toBe(true)
+    time = 1
+    expect(limiter.hit('b')).toBe(true)
+    expect(limiter.hit('b')).toBe(false)
+    time = 2
+    // Full of live keys: 'c' is let in and 'a', the oldest, is forgotten.
+    expect(limiter.hit('c')).toBe(true)
+    expect(limiter.hit('a')).toBe(true)
+    // 'a' came back by pushing out 'b', so 'b' starts over too.
+    expect(limiter.hit('b')).toBe(true)
   })
 })
 
@@ -300,7 +335,20 @@ describe('POST /api/contact', () => {
     expect((await as('1.1.1.1, 203.0.113.10')).status).toBe(200)
   })
 
-  it('caps total messages into Slack', async () => {
+  it('counts every address in one IPv6 /64 as one visitor', async () => {
+    const { port } = await start({
+      perSource: createRateLimiter({ limit: 1, windowMs: 60_000 }),
+    })
+    const as = (xff: string) =>
+      post(port, JSON.stringify(valid), { 'x-forwarded-for': xff })
+
+    expect((await as('2001:db8:dead:beef::1001')).status).toBe(200)
+    expect((await as('2001:db8:dead:beef::1002')).status).toBe(429)
+    expect((await as('2001:db8:dead:bee0::1')).status).toBe(200)
+  })
+
+  it('caps total messages into Slack, and logs when it does', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { slack, port } = await start({
       overall: createRateLimiter({ limit: 1, windowMs: 60_000 }),
     })
@@ -310,6 +358,7 @@ describe('POST /api/contact', () => {
       json: GENERIC,
     })
     expect(slack).toHaveBeenCalledOnce()
+    expect(console.warn).toHaveBeenCalledWith('contact: hourly cap reached')
   })
 
   it('never echoes what Slack said', async () => {

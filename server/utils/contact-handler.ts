@@ -10,6 +10,7 @@ import {
   clientSource,
   isSameOrigin,
   parseContactMessage,
+  rateKey,
   readLimitedBody,
   slackPayload,
   type RateLimiter,
@@ -68,8 +69,13 @@ export const createContactHandler = ({
       event.node.req.socket.remoteAddress,
       getRequestHeader(event, 'x-forwarded-for'),
     )
-    if (!perSource.hit(source)) return fail(event, 429)
+    if (!perSource.hit(rateKey(source))) return fail(event, 429)
 
+    // This check is also the CSRF guard, together with the Origin check
+    // above. A plain HTML form cannot send `application/json`, and a
+    // cross-site fetch that does needs a preflight this route never answers.
+    // A request with no Origin is only safe because of this line. Do not
+    // relax it without adding a token.
     const contentType = getRequestHeader(event, 'content-type') ?? ''
     if (!/^application\/json\s*(;|$)/i.test(contentType)) {
       return fail(event, 415)
@@ -92,7 +98,11 @@ export const createContactHandler = ({
     // A bot filled the hidden field. Tell it that it worked, send nothing.
     if (message.isBot) return { ok: true } as const
 
-    if (!overall.hit('all')) return fail(event, 429)
+    if (!overall.hit('all')) {
+      // Otherwise a flood shows only as messages that never arrive.
+      console.warn('contact: hourly cap reached')
+      return fail(event, 429)
+    }
 
     try {
       const response = await send(url, {

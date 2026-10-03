@@ -81,8 +81,11 @@ export const slackPayload = ({ name, email, message }: ContactMessage) => ({
     '',
     escapeSlackText(message),
   ].join('\n'),
-  // Belt and braces: no bold, italics or auto-links from the visitor's text.
+  // Belt and braces: no bold, italics or auto-links from the visitor's text,
+  // and no preview of a page the visitor chose.
   mrkdwn: false,
+  unfurl_links: false,
+  unfurl_media: false,
 })
 
 const isLoopback = (address: string | undefined) =>
@@ -117,6 +120,33 @@ export const clientSource = (
 }
 
 /**
+ * The rate-limit key for an address. IPv4 stays as it is. IPv6 is cut to its
+ * /64: one home or one server gets a whole /64, so keying on the full address
+ * would give a visitor billions of fresh allowances.
+ */
+export const rateKey = (address: string) => {
+  const plain = address.split('%')[0]!.replace(/^::ffff:(?=\d+\.)/i, '')
+  if (!plain.includes(':')) return plain
+
+  const [head = '', tail] = plain.split('::')
+  const groups = (part: string) => (part ? part.split(':') : [])
+  // A trailing dotted quad (`64:ff9b::192.0.2.1`) fills two groups.
+  const width = (parts: string[]) =>
+    parts.length + (parts.at(-1)?.includes('.') ? 1 : 0)
+  const front = groups(head)
+  const back = tail === undefined ? [] : groups(tail)
+  const zeros = tail === undefined ? 0 : 8 - width(front) - width(back)
+  const prefix = [
+    ...front,
+    ...Array<string>(Math.max(0, zeros)).fill('0'),
+    ...back,
+  ]
+    .slice(0, 4)
+    .map((group) => parseInt(group || '0', 16).toString(16))
+  return `${prefix.join(':')}::/64`
+}
+
+/**
  * True when there is no `Origin`, or it names the host the request came to.
  * Apache runs with `ProxyPreserveHost On`, so `Host` is the public hostname.
  * Compared on host only: the hop from Apache to Node is plain HTTP, so the
@@ -142,8 +172,9 @@ export interface RateLimiter {
 
 /**
  * Fixed window, in memory. The site is one Node process, so there is nothing
- * to share state with. When the table is full of live keys, new keys are
- * refused rather than letting it grow without bound.
+ * to share state with. The table holds at most `maxKeys` keys. When it is
+ * full, the oldest key is dropped to make room: forgetting one visitor is
+ * better than refusing every new one.
  */
 export const createRateLimiter = ({
   limit,
@@ -167,9 +198,12 @@ export const createRateLimiter = ({
         entry = undefined
       }
       if (!entry) {
-        if (windows.size >= maxKeys) {
-          for (const [k, v] of windows) if (v.resetAt <= time) windows.delete(k)
-          if (windows.size >= maxKeys) return false
+        // Keys are in insertion order, and with a fixed window that is also
+        // expiry order. Drop from the front while the first key has expired
+        // or the table is full.
+        for (const [k, v] of windows) {
+          if (v.resetAt > time && windows.size < maxKeys) break
+          windows.delete(k)
         }
         entry = { count: 0, resetAt: time + windowMs }
         windows.set(key, entry)

@@ -388,6 +388,12 @@ meaningless — it belongs on `:443` only.
     ProxyPass        / http://127.0.0.1:3000/ retry=0 timeout=30 connectiontimeout=5
     ProxyPassReverse / http://127.0.0.1:3000/
 
+    # The app refuses contact bodies over 8 KB. Stop larger ones here, so a
+    # client gets a clean 413 instead of a reset, and Node never sees them.
+    <Location /api/contact>
+        LimitRequestBody 16384
+    </Location>
+
     # ---- Compression -----------------------------------------------------
     # Nitro serves everything uncompressed, so this is the only gzip on the
     # path. mod_deflate adds `Vary: Accept-Encoding` on its own.
@@ -964,10 +970,12 @@ correct anyway, so that day is uneventful.
 
 One trap for later: `mod_proxy_http` **appends** to a client-supplied
 `X-Forwarded-For` rather than replacing it, so the first address in that header
-is whatever the visitor typed. Nothing in the app reads it today. If anything
-ever rate-limits, geolocates or logs by client IP, take the **last** entry (the
-one Apache added), or have Apache overwrite the header:
-`RequestHeader set X-Forwarded-For "expr=%{REMOTE_ADDR}"`.
+is whatever the visitor typed. `server/utils/contact.ts` reads this header to
+rate-limit the contact form. It takes the **last** entry (the one Apache
+added), and only when the peer address is loopback. If you ever put another
+proxy in front of Apache, that assumption changes: check `clientSource` before
+you do. Anything else that uses the client IP must do the same, or have Apache
+overwrite the header: `RequestHeader set X-Forwarded-For "expr=%{REMOTE_ADDR}"`.
 
 ### Port already in use
 

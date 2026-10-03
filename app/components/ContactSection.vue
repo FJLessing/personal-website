@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CONTACT } from '~/content/site'
 
-type SubmitStatus = 'idle' | 'success' | 'error'
+type SubmitStatus = 'idle' | 'success' | 'error' | 'rate-limited'
 
 /**
  * The form posts to `server/api/contact.post.ts`, which relays to Slack. The
@@ -30,8 +30,11 @@ const submit = async () => {
     form.name = ''
     form.email = ''
     form.message = ''
-  } catch {
-    status.value = 'error'
+  } catch (error) {
+    // A 429 gets its own message; it may not be this visitor's fault (a
+    // shared office address, or the hourly cap), and retrying will not help.
+    const code = (error as { statusCode?: number } | null)?.statusCode
+    status.value = code === 429 ? 'rate-limited' : 'error'
   } finally {
     isSubmitting.value = false
   }
@@ -106,6 +109,12 @@ const submit = async () => {
             >
               {{ CONTACT.form.errorMessage }}
             </p>
+            <p
+              v-else-if="status === 'rate-limited'"
+              class="rounded border border-red-500/20 bg-red-500/10 p-4 text-red-400"
+            >
+              {{ CONTACT.form.rateLimitedMessage }}
+            </p>
           </div>
 
           <div v-for="field in CONTACT.form.fields" :key="field.name">
@@ -131,6 +140,7 @@ const submit = async () => {
               :name="field.name"
               :placeholder="field.placeholder"
               :maxlength="field.maxLength"
+              :autocomplete="field.autocomplete"
               required
               class="w-full rounded border border-zinc-800 bg-zinc-900 px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
             />
@@ -163,6 +173,8 @@ const submit = async () => {
                 : CONTACT.form.submitLabel
             }}
           </button>
+
+          <p class="text-sm text-zinc-400">{{ CONTACT.form.privacyNote }}</p>
         </form>
       </div>
     </div>

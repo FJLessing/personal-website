@@ -81,6 +81,8 @@ export interface ContactField {
   readonly placeholder: string
   readonly type: 'text' | 'email' | 'textarea'
   readonly maxLength: number
+  /** WCAG 1.3.5: fields about the visitor say what they are. */
+  readonly autocomplete?: 'name' | 'email'
 }
 
 export interface SiteMeta {
@@ -172,6 +174,10 @@ export interface ContactContent {
     readonly submittingLabel: string
     readonly successMessage: string
     readonly errorMessage: string
+    /** Shown on a 429, so the visitor knows to wait rather than retry. */
+    readonly rateLimitedMessage: string
+    /** POPIA s18: where the message goes and what it is used for. */
+    readonly privacyNote: string
   }
 }
 
@@ -539,6 +545,7 @@ export const CONTACT: ContactContent = {
         placeholder: 'Your name',
         type: 'text',
         maxLength: 100,
+        autocomplete: 'name',
       },
       {
         name: 'email',
@@ -546,6 +553,7 @@ export const CONTACT: ContactContent = {
         placeholder: 'your@email.com',
         type: 'email',
         maxLength: 254,
+        autocomplete: 'email',
       },
       {
         name: 'message',
@@ -560,6 +568,10 @@ export const CONTACT: ContactContent = {
     successMessage: "Message sent. I'll get back to you soon.",
     errorMessage:
       'Your message was not sent. Please try again later, or email me directly.',
+    rateLimitedMessage:
+      'Too many messages just now. Please try again in a few minutes, or email me directly.',
+    privacyNote:
+      'Your message goes straight to my Slack. I use it to reply to you, nothing else.',
   },
 }
 

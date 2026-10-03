@@ -106,7 +106,7 @@ app/
     ExperienceSection.vue
     SkillsSection.vue
     InterestsSection.vue
-    ContactSection.vue          contact details, no form (see below)
+    ContactSection.vue          contact details, and the form when Slack is set
     SiteFooter.vue
     SectionHeading.vue          heading with one accented run of words
     AppIcon.vue                 the eight inlined SVG icons
@@ -245,16 +245,18 @@ What the endpoint does, in order (`server/utils/contact-handler.ts`):
 1. 503 if no webhook is set.
 2. 403 if the request has an `Origin` for another host. Compared on host
    against `Host`, which Apache keeps with `ProxyPreserveHost On`.
-3. 429 after 5 requests per visitor in 10 minutes, valid or not.
+3. 429 after 5 requests per visitor in 10 minutes, valid or not. An IPv6
+   visitor is counted by /64, not by single address.
 4. 415 unless the body is `application/json`.
 5. 413 over 8 KB, whether `Content-Length` says so or a chunked body runs over.
 6. 400 unless the body is exactly `name`, `email`, `message` and the honeypot
    `website`, each within its length limit. Any other key is rejected.
 7. A filled honeypot gets a 200 and nothing is sent.
-8. 429 after 30 messages into Slack in an hour, across all visitors.
+8. 429 after 30 messages into Slack in an hour, across all visitors. The
+   journal logs `contact: hourly cap reached` when this happens.
 9. The message goes to Slack as plain text, with `&`, `<` and `>` escaped, so
-   a visitor cannot ping `@channel` or plant a disguised link. 5 second
-   timeout, no redirects.
+   a visitor cannot ping `@channel` or plant a disguised link. Link and media
+   previews are off. 5 second timeout, no redirects.
 
 Every failure returns the same body, `{"ok":false,"error":"Message not sent"}`.
 Nothing from Slack, the webhook URL or a stack trace reaches the visitor or the
@@ -263,7 +265,15 @@ log.
 The visitor is the **last** entry of `X-Forwarded-For`, and only when the peer
 is loopback (Apache). `mod_proxy_http` appends to whatever the client sent, so
 the leading entries are attacker-controlled. The rate limits live in memory,
-which suits a single Node process; they reset on restart.
+which suits a single Node process; they reset on restart. The per-visitor table
+holds 10,000 keys; when it is full the oldest is dropped, so a flood of new
+addresses cannot lock everyone else out.
+
+The `Origin` check and the `application/json` requirement are the CSRF guard
+together. Do not relax the content type without adding a token.
+
+The visitor sees a separate message on a 429, and a line under the button says
+the message goes to Slack and is used only to reply (POPIA section 18).
 
 ---
 

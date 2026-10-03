@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
-import { readBody } from 'h3'
+import { readBody, setResponseStatus } from 'h3'
 
 import SiteNavigation from '~/components/SiteNavigation.vue'
 import HeroSection from '~/components/HeroSection.vue'
@@ -157,9 +157,15 @@ describe('site sections', () => {
     for (const field of CONTACT.form.fields) {
       const control = wrapper.get(`#contact-${field.name}`)
       expect(control.attributes('maxlength')).toBe(String(field.maxLength))
+      expect(control.attributes('autocomplete')).toBe(field.autocomplete)
       expect(wrapper.html()).toContain(`for="contact-${field.name}"`)
     }
+    expect(wrapper.get('#contact-name').attributes('autocomplete')).toBe('name')
+    expect(wrapper.get('#contact-email').attributes('autocomplete')).toBe(
+      'email',
+    )
     expect(wrapper.text()).toContain(CONTACT.form.submitLabel)
+    expect(wrapper.text()).toContain(CONTACT.form.privacyNote)
 
     // The honeypot is out of the tab order and hidden from assistive tech.
     const honeypot = wrapper.get('#contact-website')
@@ -192,6 +198,29 @@ describe('site sections', () => {
     expect(received).toEqual([
       { name: 'Ada', email: 'ada@example.com', message: 'Hello', website: '' },
     ])
+
+    useState('contact-form-enabled').value = false
+  })
+
+  it('Contact tells the visitor to wait when the server answers 429', async () => {
+    registerEndpoint('/api/contact', {
+      method: 'POST',
+      handler: (event) => {
+        setResponseStatus(event, 429)
+        return { ok: false, error: 'Message not sent' }
+      },
+    })
+    useState('contact-form-enabled').value = true
+    const wrapper = await mountSuspended(ContactSection)
+
+    await wrapper.get('#contact-name').setValue('Ada')
+    await wrapper.get('#contact-email').setValue('ada@example.com')
+    await wrapper.get('#contact-message').setValue('Hello')
+    await wrapper.get('form').trigger('submit')
+    await vi.waitFor(() =>
+      expect(wrapper.text()).toContain(CONTACT.form.rateLimitedMessage),
+    )
+    expect(wrapper.text()).not.toContain(CONTACT.form.errorMessage)
 
     useState('contact-form-enabled').value = false
   })
