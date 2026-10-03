@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# Read-only. This workflow never writes to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, type check, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # Actions are pinned to a commit SHA, not a moving tag, so a compromised
+      # or retagged release cannot change what runs here.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate on what actually ships. The repo has no runtime `dependencies`, so
+      # this covers the whole deployed surface and must stay at zero.
+      - name: Audit shipped dependencies
+        run: npm audit --omit=dev --audit-level=low
+
+      # The dev/build tree currently carries advisories that have no upstream
+      # fix (see README, "Dependency audit"). Reported, not gated, so a new one
+      # is visible without a red build for something we cannot act on.
+      - name: Audit build tooling (informational)
+        run: npm audit --audit-level=low
+        continue-on-error: true
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
