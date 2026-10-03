@@ -37,7 +37,7 @@ service or a paid tier.
 | ------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Node    | **22.x** (see `.nvmrc`) | `.nvmrc` pins `22` and CI builds on 22. `package.json` allows `>=20.19.0`, but deploy what CI tested.                     |
 | npm     | 10+                     | Ships with Node 22. Needed only to build, not to run.                                                                     |
-| Apache  | **2.4.7 or newer**      | The vhost below uses `Header setifempty` (2.4.7+) and `Header … expr=` (2.4.10+). Debian 12 / Ubuntu 22.04+ ship 2.4.52+. |
+| Apache  | **2.4.10 or newer**     | The vhost below uses `Header setifempty` (2.4.7+) and `Header … expr=` (2.4.10+). Debian 12 / Ubuntu 22.04+ ship 2.4.52+. |
 | certbot | any                     | Free Let's Encrypt certificates. `apt install certbot python3-certbot-apache`.                                            |
 
 Check what you have:
@@ -320,6 +320,37 @@ meaningless — it belongs on `:443` only.
 <IfModule mod_ssl.c>
 
 # ---------------------------------------------------------------------------
+# Apex, and every hostname nobody configured. Redirect only.
+#
+# This block MUST come first. Apache uses the first :443 vhost as the default
+# for any SNI name or Host that matches nothing else, so placing it here means
+# a stray DNS record pointed at this box gets a redirect to the real site, not
+# a second copy of it.
+#
+# No `ServerAlias *`. Names are matched in file order, so a wildcard alias here
+# would also catch www.fjlessing.co.za and redirect it to itself forever. Being
+# first already makes this the catch-all.
+# ---------------------------------------------------------------------------
+<VirtualHost *:443>
+    ServerName fjlessing.co.za
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/fjlessing.co.za/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/fjlessing.co.za/privkey.pem
+    Include /etc/letsencrypt/options-ssl-apache.conf
+
+    # HSTS for the apex itself, without includeSubDomains. Adding
+    # includeSubDomains here would commit every *.fjlessing.co.za name to
+    # HTTPS; see section 5 before you do that.
+    Header always set Strict-Transport-Security "max-age=31536000"
+
+    Redirect permanent / https://www.fjlessing.co.za/
+
+    ErrorLog  ${APACHE_LOG_DIR}/fjlessing.co.za-apex-error.log
+    CustomLog ${APACHE_LOG_DIR}/fjlessing.co.za-apex-access.log combined
+</VirtualHost>
+
+# ---------------------------------------------------------------------------
 # The real site. www only.
 # ---------------------------------------------------------------------------
 <VirtualHost *:443>
@@ -409,9 +440,20 @@ meaningless — it belongs on `:443` only.
     </IfModule>
 
     # ---- Security headers (see section 5) --------------------------------
+    # Every header is unset first, then set. mod_headers keeps two tables:
+    # plain `Header` acts on the normal one, where a proxied backend's headers
+    # land; `Header always` acts on the error one. `always set` alone would
+    # leave Nitro's own copy in place (it sends nosniff, no-referrer and DENY
+    # on a 404), and the client would get both. The plain `unset` removes the
+    # backend's copy; `always set` then writes the single value that ships,
+    # on every status code.
+    Header unset      Strict-Transport-Security
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header unset      X-Content-Type-Options
     Header always set X-Content-Type-Options "nosniff"
+    Header unset      Referrer-Policy
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header unset      Permissions-Policy
     Header always set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
 
     # NO Content-Security-Policy here. The app sets it, with a per-request
@@ -423,11 +465,14 @@ meaningless — it belongs on `:443` only.
     # Framing, for the responses the app never sees: a 502 while Node is down,
     # or anything Apache answers itself. The app's CSP carries
     # `frame-ancestors 'none'` on every page it renders; this covers the rest.
+    Header unset      X-Frame-Options
     Header always set X-Frame-Options "DENY"
 
-    # Nitro stamps `X-Powered-By: Nuxt` on its error responses. It tells an
-    # attacker what to look up and nobody else anything. `always` because the
-    # responses that carry it are exactly the non-2xx ones.
+    # Nitro stamps `X-Powered-By: Nuxt` on every response it renders, 200s
+    # included. It tells an attacker what to look up and nobody else anything.
+    # Both forms, for the same two-table reason as above: the plain one strips
+    # the proxied copy, the `always` one anything in the error table.
+    Header unset        X-Powered-By
     Header always unset X-Powered-By
 
     # Apache's own version/OS banner. Belongs in apache2.conf really, but it is
@@ -466,7 +511,7 @@ sudo systemctl reload apache2
 | `Referrer-Policy`            | Apache  | Same: one site-wide value, no per-route variation.                                                                                                   |
 | `Permissions-Policy`         | Apache  | Same.                                                                                                                                                |
 | `Content-Security-Policy`    | **App** | It carries a per-request nonce, so only the thing rendering the HTML can set it. The vhost must not set it as well — see below.                      |
-| `X-Powered-By` (unset)       | Apache  | Nitro sets it on every response it renders, 200s included. Stripping it at the proxy covers every path, including ones the app never reaches.        |
+| `X-Powered-By` (unset)       | Apache  | Nitro sets it on every response it renders, 200s included. The vhost strips it with both `Header unset` and `Header always unset`; section 6 checks. |
 | `Content-Type`               | **App** | Nitro knows the type of each response. Apache must not override it, which is exactly what `nosniff` relies on.                                       |
 | `Cache-Control` on `/_nuxt/` | **App** | Nitro already emits `public, max-age=31536000, immutable` because it knows the filenames are content-hashed. Apache uses `setifempty`, so it defers. |
 | `ETag` / `Last-Modified`     | **App** | Nitro computes these from the response body.                                                                                                         |
@@ -511,9 +556,15 @@ page renderer, which is where `server/plugins/content-security-policy.ts` runs,
 so that response carries the full nonced CSP and Nitro's narrow one never
 appears. It also carries `X-Powered-By: Nuxt`, which the vhost unsets.
 
-Nothing is duplicated. `Header always set` **replaces** rather than appends, so
-for the headers Apache does set, Apache's value is the one that reaches the
-browser. The app's `X-Frame-Options: DENY` and the vhost's are the same value.
+**Each header must reach the browser once.** On a 404 Nitro already sends
+`nosniff`, `no-referrer` and `DENY`. `Header always set` on its own does not
+replace those. It writes to mod_headers' error table, while a proxied backend's
+headers sit in the normal table, and Apache sends both. Two `Referrer-Policy`
+headers resolve to the last valid token, so the duplicate is not harmless. That
+is why every name in the vhost has a plain `Header unset` in front of its
+`Header always set`: the unset removes Nitro's copy, and Apache's value is the
+only one that ships, on every status code. Section 6 checks this on both a 200
+and a 404. Trust that check, not this paragraph.
 
 **The vhost must never set `Content-Security-Policy`.** Two CSP headers do not
 merge — the browser enforces the intersection of both, which is almost never
@@ -560,11 +611,16 @@ nonce cannot cover a style _attribute_ at all. Style-based exfiltration is a far
 weaker primitive than script execution, so `script-src` was the one worth
 closing.
 
-**On HSTS:** `max-age=31536000; includeSubDomains` commits every subdomain of
-`fjlessing.co.za` to HTTPS for a year, in every browser that has visited. Make
-sure no subdomain is HTTP-only before you enable it. `preload` is deliberately
-not in the value — getting onto the preload list is easy and getting off it takes
-months, so add it only as a conscious decision.
+**On HSTS:** a browser applies HSTS to the host that sent it. The www vhost
+sends `max-age=31536000; includeSubDomains`, which covers `www.fjlessing.co.za`
+and anything under it for a year. The apex vhost sends `max-age=31536000` with no
+`includeSubDomains`, which covers `fjlessing.co.za` itself and nothing else.
+Other subdomains of `fjlessing.co.za` are deliberately left uncommitted.
+Extending HSTS to all of them means adding `includeSubDomains` on the apex. Do
+that only once you know no subdomain is HTTP-only. `preload` is also deliberately
+left out. It requires `includeSubDomains` on the apex, and getting onto the
+preload list is easy while getting off it takes months. Both are owner decisions,
+not defaults.
 
 **On `Permissions-Policy`:** every listed feature is denied outright (`=()`),
 because the site uses none of them. The syntax is the current structured one;
@@ -646,8 +702,20 @@ curl -sS -o /dev/null -D - http://www.fjlessing.co.za/ | head -5
 #         Location: https://www.fjlessing.co.za/
 
 # apex → www, still 301, still HTTPS
-curl -sS -o /dev/null -D - https://fjlessing.co.za/ | grep -i '^location'
-# expect: location: https://www.fjlessing.co.za/
+curl -sS -o /dev/null -D - https://fjlessing.co.za/ | grep -i -E '^HTTP|^location'
+# expect: HTTP/1.1 301 Moved Permanently
+#         location: https://www.fjlessing.co.za/
+
+# a hostname nobody configured lands on the apex vhost (the :443 default),
+# so it is redirected rather than served a second copy of the site.
+# --connect-to sends both SNI and Host as the made-up name (a bare -H 'Host:'
+# would not; Apache rejects an SNI/Host mismatch with a 400 or 421).
+# -k because the certificate does not cover the made-up name, which is correct.
+curl -sSk -o /dev/null -D - \
+  --connect-to not-configured.example:443:www.fjlessing.co.za:443 \
+  https://not-configured.example/ | grep -i -E '^HTTP|^location'
+# expect: HTTP/1.1 301 Moved Permanently
+#         location: https://www.fjlessing.co.za/
 
 # and the ACME path must NOT redirect
 curl -sS -o /dev/null -w '%{http_code}\n' http://www.fjlessing.co.za/.well-known/acme-challenge/test
@@ -665,6 +733,29 @@ Expect one line each for HSTS, CSP, nosniff, Referrer-Policy and
 Permissions-Policy; `cache-control: no-cache` for the HTML. **Exactly one line
 per header name** — two CSP lines means the vhost has grown a copy of the one
 the app sets, and the browser will quietly enforce the intersection.
+
+The same rule on an error page, where Nitro sends its own `nosniff`,
+`no-referrer` and `DENY`, and the vhost has to replace them, not add to them:
+
+```bash
+curl -sS -o /dev/null -D - https://www.fjlessing.co.za/nope \
+  | grep -i -E 'x-content-type|x-frame-options|referrer-policy|permissions-policy|strict-transport|content-security' \
+  | cut -d: -f1 | tr 'A-Z' 'a-z' | sort | uniq -c
+# expect: a count of 1 on every line, and referrer-policy present once with
+#         the vhost's value (strict-origin-when-cross-origin), not no-referrer
+```
+
+A count of 2 means a `Header unset <name>` is missing in front of that name's
+`Header always set` in the vhost.
+
+The framework banner must be gone, on a 200 and on a 404:
+
+```bash
+for u in / /nope; do
+  curl -sS -o /dev/null -D - "https://www.fjlessing.co.za$u" | grep -i x-powered-by
+done
+# expect: no output
+```
 
 The CSP itself has to be different on every request:
 
@@ -866,6 +957,13 @@ in `app/content/site.ts` — they are fixed strings and do not depend on the
 request host. So a Host-header mistake will not show up in the metadata; it will
 show up the first time any code calls `useRequestURL()`. Keep the two headers
 correct anyway, so that day is uneventful.
+
+One trap for later: `mod_proxy_http` **appends** to a client-supplied
+`X-Forwarded-For` rather than replacing it, so the first address in that header
+is whatever the visitor typed. Nothing in the app reads it today. If anything
+ever rate-limits, geolocates or logs by client IP, take the **last** entry (the
+one Apache added), or have Apache overwrite the header:
+`RequestHeader set X-Forwarded-For "expr=%{REMOTE_ADDR}"`.
 
 ### Port already in use
 
