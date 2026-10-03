@@ -264,7 +264,10 @@ log.
 
 The visitor is the **last** entry of `X-Forwarded-For`, and only when the peer
 is loopback (Apache). `mod_proxy_http` appends to whatever the client sent, so
-the leading entries are attacker-controlled. The rate limits live in memory,
+the leading entries are attacker-controlled. The live site is behind
+Cloudflare, so Apache needs `mod_remoteip` to put the visitor, not the
+Cloudflare edge, in that last entry (`DEPLOYMENT.md`, "Behind Cloudflare"). The
+rate limits live in memory,
 which suits a single Node process; they reset on restart. The per-visitor table
 holds 10,000 keys; when it is full the oldest is dropped, so a flood of new
 addresses cannot lock everyone else out.

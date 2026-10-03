@@ -54,14 +54,14 @@ the runtime needs 20.19+ but there is no reason to split them.
 ### Apache modules
 
 ```bash
-sudo a2enmod proxy proxy_http headers ssl rewrite deflate expires
+sudo a2enmod proxy proxy_http headers ssl rewrite deflate expires remoteip
 sudo systemctl restart apache2
 ```
 
 Confirm they loaded:
 
 ```bash
-apachectl -M | grep -E 'proxy_module|proxy_http|headers|ssl|rewrite|deflate|expires'
+apachectl -M | grep -E 'proxy_module|proxy_http|headers|ssl|rewrite|deflate|expires|remoteip'
 ```
 
 What each one is for:
@@ -75,6 +75,7 @@ What each one is for:
 | `rewrite`    | the `:80` → `:443` redirect                                                                                   |
 | `deflate`    | gzip — **Nitro does not compress anything**, so without this every HTML and JS response goes out uncompressed |
 | `expires`    | `Expires`/`Cache-Control` for the unhashed files in `public/`                                                 |
+| `remoteip`   | the visitor's real address behind Cloudflare, for the contact form's rate limit (see section 4)               |
 
 **`proxy_wstunnel` is not needed.** The production site opens no WebSocket and no
 EventSource — the only long-lived connection Nuxt makes is the dev server's HMR
@@ -385,6 +386,13 @@ meaningless — it belongs on `:443` only.
     RequestHeader set X-Forwarded-Proto "https"
     RequestHeader set X-Forwarded-Port  "443"
 
+    # The site is behind Cloudflare, so the peer is a Cloudflare edge, not the
+    # visitor. Take the visitor from CF-Connecting-IP, but only when the peer
+    # is on Cloudflare's published list. mod_proxy_http then appends the
+    # visitor, not the edge, to X-Forwarded-For. See "Behind Cloudflare" below.
+    RemoteIPHeader            CF-Connecting-IP
+    RemoteIPTrustedProxyList  /etc/apache2/cloudflare-ips.txt
+
     ProxyPass        / http://127.0.0.1:3000/ retry=0 timeout=30 connectiontimeout=5
     ProxyPassReverse / http://127.0.0.1:3000/
 
@@ -507,6 +515,36 @@ sudo systemctl reload apache2
 > `ProxyPassReverse` is the real directive name — there is no `ProxyReversePass`.
 > It rewrites `Location`, `Content-Location` and `URI` headers on redirects
 > coming back from Nitro so they do not leak `http://127.0.0.1:3000`.
+
+### Behind Cloudflare
+
+`www.fjlessing.co.za` resolves to Cloudflare (`server: cloudflare` on every
+response), so every request reaches Apache from a Cloudflare edge address.
+Without `mod_remoteip`, the contact form would count all visitors who come
+through one edge as one visitor, and they would share 5 messages per 10
+minutes.
+
+The vhost above tells Apache to read the visitor from `CF-Connecting-IP`, and
+to trust that header only from Cloudflare's own addresses. Anyone else who
+sends it is ignored. Create the list **before** the `a2ensite` step above,
+because `configtest` fails while the file is missing. Run it again if
+Cloudflare announces a change to its ranges:
+
+```bash
+{ curl -fsSL https://www.cloudflare.com/ips-v4; echo; curl -fsSL https://www.cloudflare.com/ips-v6; echo; } \
+  | grep -E '^[0-9a-f.:/]+$' | sudo tee /etc/apache2/cloudflare-ips.txt
+sudo apachectl configtest && sudo systemctl reload apache2
+```
+
+Check it: load the site from your own machine, then run
+`sudo tail -n 3 /var/log/apache2/access.log`. The first field must be your own
+public address, not a Cloudflare one (`104.x`, `172.64-71.x`, `2606:4700:…`).
+If it still shows Cloudflare, change `%h` to `%a` in the `combined`
+`LogFormat` and look again: `%a` is the address `mod_remoteip` sets, and the
+same one the app receives.
+
+If the site ever stops using Cloudflare, remove the two `RemoteIP` lines.
+They do nothing harmful without it, but they are then dead config.
 
 ---
 
@@ -972,9 +1010,10 @@ One trap for later: `mod_proxy_http` **appends** to a client-supplied
 `X-Forwarded-For` rather than replacing it, so the first address in that header
 is whatever the visitor typed. `server/utils/contact.ts` reads this header to
 rate-limit the contact form. It takes the **last** entry (the one Apache
-added), and only when the peer address is loopback. If you ever put another
-proxy in front of Apache, that assumption changes: check `clientSource` before
-you do. Anything else that uses the client IP must do the same, or have Apache
+added), and only when the peer address is loopback. Cloudflare is a proxy in
+front of Apache, so this only names the visitor while `mod_remoteip` is set up
+as in "Behind Cloudflare" below. If you add or remove a proxy, check
+`clientSource` first. Anything else that uses the client IP must do the same, or have Apache
 overwrite the header: `RequestHeader set X-Forwarded-For "expr=%{REMOTE_ADDR}"`.
 
 ### Port already in use
