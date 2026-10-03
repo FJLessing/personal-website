@@ -32,7 +32,7 @@ import { EXPERIENCE } from '~/content/site'
             <div>
               <h3 class="text-xl text-white">{{ entry.role }}</h3>
               <p class="text-yellow-500">{{ entry.company }}</p>
-              <p class="text-sm text-zinc-500">{{ entry.period }}</p>
+              <p class="text-sm text-zinc-400">{{ entry.period }}</p>
             </div>
 
             <p class="text-zinc-400">{{ entry.description }}</p>

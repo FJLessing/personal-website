@@ -227,7 +227,13 @@ export const SITE_META: SiteMeta = {
 export const NAVIGATION: NavigationContent = {
   brandLead: 'FJ',
   brandAccent: 'Lessing',
-  homeLabel: 'FJ Lessing - back to top',
+  /**
+   * WCAG 2.5.3 Label in Name: the visible text is `brandLead` and
+   * `brandAccent` in adjacent spans, so it reads as `FJLessing`. The
+   * accessible name has to start with that exact string or speech input
+   * cannot activate the link by what it says.
+   */
+  homeLabel: 'FJLessing - back to top',
   menuLabel: 'Main navigation',
   openMenuLabel: 'Open menu',
   closeMenuLabel: 'Close menu',

@@ -34,7 +34,7 @@ const year = useState('footer-year', () => new Date().getFullYear())
           </li>
         </ul>
 
-        <p class="flex items-center gap-2 text-sm text-zinc-500">
+        <p class="flex items-center gap-2 text-sm text-zinc-400">
           {{ FOOTER.madeWithPrefix }}
           <AppIcon name="coffee" class="h-4 w-4 fill-current text-yellow-500" />
           {{ year }}

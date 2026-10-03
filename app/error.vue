@@ -118,7 +118,7 @@ useSeoMeta({
           </div>
 
           <div v-if="diagnostics" class="mt-12 border-t border-zinc-800 pt-6">
-            <h2 class="text-sm tracking-wider text-zinc-500 uppercase">
+            <h2 class="text-sm tracking-wider text-zinc-400 uppercase">
               {{ ERROR.diagnosticsLabel }}
             </h2>
             <p class="mt-2 font-mono text-sm break-words text-zinc-400">

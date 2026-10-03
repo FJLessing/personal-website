@@ -25,7 +25,7 @@ import { ABOUT } from '~/content/site'
             <p v-for="line in aside.lines" :key="line" class="text-zinc-400">
               {{ line }}
             </p>
-            <p v-if="aside.note" class="text-sm text-zinc-500">
+            <p v-if="aside.note" class="text-sm text-zinc-400">
               {{ aside.note }}
             </p>
             <p v-if="aside.link" class="text-zinc-400">
