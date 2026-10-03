@@ -5,6 +5,7 @@ import {
   absoluteUrl,
   buildRobotsTxt,
   buildSitemapXml,
+  escapeXml,
 } from '../server/utils/crawl'
 
 describe('buildSitemapXml', () => {
@@ -29,6 +30,13 @@ describe('buildSitemapXml', () => {
 
   it('does not invent a lastmod', () => {
     expect(buildSitemapXml(SITE_META.url)).not.toContain('lastmod')
+  })
+})
+
+describe('escapeXml', () => {
+  it('escapes all five characters, ampersand first', () => {
+    expect(escapeXml(`&<>"'`)).toBe('&amp;&lt;&gt;&quot;&apos;')
+    expect(escapeXml('&amp;')).toBe('&amp;amp;')
   })
 })
 

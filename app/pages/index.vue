@@ -50,7 +50,7 @@ useHead({
             '@type': 'WebSite',
             '@id': `${pageUrl}#website`,
             url: pageUrl,
-            name: SITE_META.siteName,
+            name: SITE_META.author,
             inLanguage: 'en',
             publisher: { '@id': `${pageUrl}#person` },
           },

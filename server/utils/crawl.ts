@@ -15,7 +15,7 @@ export const absoluteUrl = (origin: string, path: string): string =>
 export const SITEMAP_PATHS: readonly string[] = ['/']
 
 /** `&`, `<`, `>`, `"` and `'` are the five characters XML cannot hold raw. */
-const escapeXml = (value: string): string =>
+export const escapeXml = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
