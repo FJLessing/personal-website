@@ -32,6 +32,10 @@ HEADLESS_BROWSER_HOME="${HEADLESS_BROWSER_HOME:-$(cd "$REPO_ROOT/.." && pwd)/.to
 FORCE=0
 [ "${1:-}" = "--force" ] && FORCE=1
 
+# The Playwright release this installs. Chromium comes from the same release,
+# so the two move together.
+PLAYWRIGHT_VERSION="1.63.0"
+
 SYSROOT="$HEADLESS_BROWSER_HOME/sysroot"
 DRIVER="$HEADLESS_BROWSER_HOME/driver"
 BROWSERS="$HEADLESS_BROWSER_HOME/browsers"
@@ -99,7 +103,11 @@ else
   "description": "Container-local Playwright driver. Deliberately not a dependency of the site."
 }
 EOF
-  (cd "$DRIVER" && npm install --no-audit --no-fund --silent playwright-core@latest)
+  # Pinned and exact, not @latest. This package downloads a browser binary and
+  # then runs it, so whatever @latest resolves to on the day is what executes.
+  # Bump PLAYWRIGHT_VERSION deliberately and re-run with --force. The audit
+  # output is left on, which is why there is no --no-audit here.
+  (cd "$DRIVER" && npm install --no-fund --save-exact "playwright-core@$PLAYWRIGHT_VERSION")
 fi
 
 # ---------------------------------------------------------------- 3. chromium
