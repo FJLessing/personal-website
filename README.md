@@ -130,6 +130,22 @@ test/
   support/tailwind-palette.ts   Tailwind's OKLCH tokens resolved to sRGB
 ```
 
+### The fonts are self-hosted
+
+IBM Plex lives in `public/fonts/` — Google's own latin and latin-ext woff2
+subsets, declared in `app/assets/css/main.css` and preloaded for the two faces
+above the fold. Nothing is fetched from `fonts.googleapis.com` or
+`fonts.gstatic.com`.
+
+That is a privacy decision before it is a performance one: a Google-hosted
+stylesheet hands every first-time visitor's IP, user agent and referer to a
+third party before the page paints. It also happened to be the single largest
+render-blocking resource on the page, and it let the CSP drop two origins.
+
+Sans is the variable font, so one file per subset covers every weight. Mono is
+static: one file per weight, and only 400/500/700 because nothing uses 600.
+Licence: SIL OFL 1.1, in `public/fonts/LICENSE.txt`.
+
 ### Content lives in one file
 
 `app/content/site.ts` holds every user-visible string, each block annotated with

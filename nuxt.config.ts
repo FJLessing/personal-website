@@ -59,16 +59,29 @@ export default defineNuxtConfig({
         // Social profile links, as on the reference site.
         { rel: 'me', href: 'https://www.linkedin.com/in/fj-lessing/' },
         { rel: 'me', href: 'https://github.com/FJLessing' },
-        // Fonts as <link> rather than a CSS @import, which would block render.
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        /**
+         * The two faces above the fold: Mono 400 is the body default, Sans is
+         * every heading. Both are discovered inside the stylesheet, which is
+         * one round trip too late, so they are preloaded here. `crossorigin`
+         * is required even same-origin — a font request is CORS-mode, and
+         * without it the preload is fetched twice.
+         *
+         * The rest of the faces are declared in `app/assets/css/main.css` and
+         * fetched only if a glyph needs them.
+         */
         {
-          rel: 'preconnect',
-          href: 'https://fonts.gstatic.com',
+          rel: 'preload',
+          as: 'font',
+          type: 'font/woff2',
+          href: '/fonts/ibm-plex-mono-400-latin.woff2',
           crossorigin: '',
         },
         {
-          rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap',
+          rel: 'preload',
+          as: 'font',
+          type: 'font/woff2',
+          href: '/fonts/ibm-plex-sans-latin.woff2',
+          crossorigin: '',
         },
       ],
     },
