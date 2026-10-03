@@ -296,8 +296,19 @@ export const EXPERIENCE: ExperienceContent = {
       company: 'Brave Digital',
       period: '2021 - Present',
       description:
-        'Lead a small team of around 5-10 developers in delivering cutting-edge software solutions. Responsible for scoping and architecting projects, overseeing developer growth, guiding technical strategy, and ensuring high-quality delivery. Manage DevOps including web servers, cloud infrastructure, and app deployment. I also fill the gaps in work as a senior developer on projects to help the team hit budgets and deadlines.',
-      tech: ['Laravel', 'Node.js', 'Vue', 'React', 'Flutter', 'AWS', 'DevOps'],
+        "Lead a team of around 5-10 developers. I set how we adopt AI and agentic development across the team's process — how context is given, how agents are set up, and where an agent is trusted to act on its own — alongside scoping and architecting projects, technical strategy, developer growth and delivery quality. I manage DevOps including web servers, cloud infrastructure and app deployment, and still work as a senior developer on projects to help the team hit budgets and deadlines.",
+      tech: [
+        'AI Agents',
+        'Claude',
+        'OpenCode',
+        'Laravel',
+        'Node.js',
+        'Vue',
+        'React',
+        'Flutter',
+        'AWS',
+        'DevOps',
+      ],
     },
     {
       role: 'Full-Stack Developer',
@@ -336,8 +347,28 @@ export const SKILLS: SkillsContent = {
   heading: { lead: 'Skills & ', accent: 'Technologies' },
   categories: [
     {
+      title: 'AI & Agentic Engineering',
+      skills: [
+        'Agentic Development',
+        'Agent Design & Orchestration',
+        'Context Engineering',
+        'Prompt Engineering',
+        'Claude Code',
+        'OpenCode',
+        'Gemini',
+        'AntiGravity',
+        'MCP',
+        'Anthropic API',
+        'OpenAI API',
+        'Python for AI & Data',
+        'AI-Assisted Testing',
+        'AI-Driven Data Migration',
+      ],
+    },
+    {
       title: 'Core Skills',
       skills: [
+        'AI Integration',
         'Software Engineering',
         'Solution Architecture',
         'Server Architecture',
@@ -354,6 +385,7 @@ export const SKILLS: SkillsContent = {
         'JavaScript',
         'TypeScript',
         'Dart',
+        'Go',
         'PHP',
         'SQL',
         'Python',
