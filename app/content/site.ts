@@ -165,6 +165,28 @@ export interface FooterContent {
   readonly socials: readonly SocialLink[]
 }
 
+/** One flavour of error copy, chosen from the HTTP status. */
+export interface ErrorVariant {
+  /** Document title. The status code is prefixed at render time. */
+  readonly title: string
+  readonly heading: AccentHeading
+  readonly message: string
+}
+
+export interface ErrorContent {
+  /** Precedes the status code in the eyebrow, e.g. "Error 404". */
+  readonly codePrefix: string
+  readonly homeLabel: string
+  readonly homeHref: string
+  readonly contactLabel: string
+  readonly contactHref: string
+  /** Heading above the dev-only diagnostics block. Never shown in production. */
+  readonly diagnosticsLabel: string
+  readonly notFound: ErrorVariant
+  readonly serverError: ErrorVariant
+  readonly fallback: ErrorVariant
+}
+
 export const SITE_META: SiteMeta = {
   title: 'FJ Lessing - Head of Development | Full-Stack Developer',
   description:
@@ -485,6 +507,33 @@ export const FOOTER: FooterContent = {
       icon: 'mail',
     },
   ],
+}
+
+export const ERROR: ErrorContent = {
+  codePrefix: 'Error',
+  homeLabel: 'Back to the home page',
+  homeHref: '/',
+  contactLabel: 'Get in Touch',
+  contactHref: '/#contact',
+  diagnosticsLabel: 'Development diagnostics',
+  notFound: {
+    title: 'Page not found',
+    heading: { lead: 'Page ', accent: 'not found' },
+    message:
+      'That address does not point at anything on this site. It may have moved, or it may never have existed.',
+  },
+  serverError: {
+    title: 'Server error',
+    heading: { lead: 'Something ', accent: 'broke' },
+    message:
+      'The server hit an error handling that request. Try again in a moment — if it keeps happening, get in touch and tell me what you were doing.',
+  },
+  fallback: {
+    title: 'Something went wrong',
+    heading: { lead: 'Something ', accent: 'went wrong' },
+    message:
+      'That request could not be completed. Head back to the home page and try again from there.',
+  },
 }
 
 export const SKIP_LINK_LABEL = 'Skip to main content'

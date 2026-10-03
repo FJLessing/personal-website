@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { NAVIGATION } from '~/content/site'
 
+/**
+ * The nav links are hash-only (`#about`), which is right on the single-page
+ * home route and dead anywhere else. `base` is prefixed to every target so a
+ * page that is not `/` — the error page — can emit `/#about` instead.
+ */
+const props = withDefaults(defineProps<{ base?: string }>(), { base: '' })
+
+const target = (href: string) => `${props.base}${href}`
+/** Home is `#` on the home page (scroll to top) and `/` everywhere else. */
+const homeHref = computed(() => props.base || '#')
+
 const isOpen = ref(false)
 const close = () => {
   isOpen.value = false
@@ -21,7 +32,7 @@ const close = () => {
     <div class="mx-auto max-w-6xl px-6 py-4">
       <div class="flex items-center justify-between">
         <a
-          href="#"
+          :href="homeHref"
           :aria-label="NAVIGATION.homeLabel"
           class="rounded-sm text-xl tracking-wider text-white"
           >{{ NAVIGATION.brandLead
@@ -32,7 +43,7 @@ const close = () => {
         <ul class="hidden items-center gap-8 md:flex">
           <li v-for="link in NAVIGATION.links" :key="link.href">
             <a
-              :href="link.href"
+              :href="target(link.href)"
               class="rounded-sm text-zinc-400 transition-colors hover:text-yellow-500"
               >{{ link.label }}</a
             >
@@ -63,7 +74,7 @@ const close = () => {
         <ul class="flex flex-col gap-4">
           <li v-for="link in NAVIGATION.links" :key="link.href">
             <a
-              :href="link.href"
+              :href="target(link.href)"
               class="rounded-sm text-zinc-400 transition-colors hover:text-yellow-500"
               @click="close"
               >{{ link.label }}</a

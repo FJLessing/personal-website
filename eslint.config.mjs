@@ -17,7 +17,12 @@ export default withNuxt(
   {
     // Nuxt derives these component names from the file path, so single-word
     // names are the convention, not an accident.
-    files: ['app/pages/**/*.vue', 'app/layouts/**/*.vue', 'app/app.vue'],
+    files: [
+      'app/pages/**/*.vue',
+      'app/layouts/**/*.vue',
+      'app/app.vue',
+      'app/error.vue',
+    ],
     rules: {
       'vue/multi-word-component-names': 'off',
     },
