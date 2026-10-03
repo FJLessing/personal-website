@@ -7,8 +7,7 @@
   "license": "UNLICENSED",
   "author": "FJ Lessing <me@fjlessing.co.za>",
   "engines": {
-    "node": ">=20.19.0",
-    "npm": ">=11"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "dev": "nuxt dev",

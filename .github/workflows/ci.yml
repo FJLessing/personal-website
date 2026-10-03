@@ -32,13 +32,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      # Node 22 bundles npm 10, which rejects a lockfile written by npm 11 (it
-      # reads the hoisted tree differently and reports phantom missing deps).
-      # Pin npm to the version that writes the committed lockfile so `npm ci`
-      # resolves the same tree here as it does locally.
-      - name: Pin npm
-        run: npm install -g npm@11.19.0
-
       - name: Install dependencies
         run: npm ci
 
