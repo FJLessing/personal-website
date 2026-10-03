@@ -4,7 +4,7 @@
  * Components read from here and never hard-code copy. Changing a sentence must
  * never mean editing a component. Each block is annotated with its interface,
  * so adding a field to a type immediately fails the build until the content is
- * filled in — and vice versa.
+ * filled in, and vice versa.
  */
 
 /** A heading where one run of words is painted in the accent colour. */
@@ -188,11 +188,11 @@ export interface ErrorContent {
 }
 
 export const SITE_META: SiteMeta = {
-  title: 'FJ Lessing - Head of Development | Full-Stack Developer',
+  title: 'FJ Lessing - Head of Development | Full-Stack & Agentic Development',
   description:
-    'FJ Lessing - Head of Development at BRAVE Digital. Expert in full-stack development, mobile apps, cloud architecture, and team leadership. Specialized in React, Vue, Laravel, Flutter, and DevOps.',
+    'FJ Lessing - Head of Development at BRAVE Digital. Leads a development team and the agentic workflows around it. Full-stack, mobile and cloud engineering with React, Vue, Laravel, Flutter and AWS.',
   keywords:
-    'FJ Lessing, Head of Development, Full-Stack Developer, React, Vue, Laravel, Flutter, AWS, DevOps, Software Engineer, BRAVE Digital',
+    'FJ Lessing, Head of Development, Agentic Development, AI Agents, AI Integration, Context Engineering, Full-Stack Developer, React, Vue, Laravel, Flutter, AWS, DevOps, Software Engineer, BRAVE Digital',
   author: 'FJ Lessing',
   siteName: 'FJ Lessing Portfolio',
   url: 'https://www.fjlessing.co.za',
@@ -208,6 +208,9 @@ export const SITE_META: SiteMeta = {
     'https://github.com/FJLessing',
   ],
   knowsAbout: [
+    'Agentic Development',
+    'AI Agents',
+    'Context Engineering',
     'Web Development',
     'Mobile Development',
     'React',
@@ -218,7 +221,7 @@ export const SITE_META: SiteMeta = {
     'DevOps',
   ],
   socialDescription:
-    'Head of Development at BRAVE Digital with expertise in full-stack development, mobile applications, and cloud infrastructure.',
+    'Head of Development at BRAVE Digital. Leads a team of developers and the agentic workflows around them, on top of full-stack, mobile and cloud engineering.',
 }
 
 export const NAVIGATION: NavigationContent = {
@@ -243,7 +246,7 @@ export const HERO: HeroContent = {
   portraitSrc: '/profile.png',
   portraitAlt: 'FJ Lessing',
   tagline:
-    'I lead a talented team of developers in delivering cutting-edge software solutions. Passionate about full-stack development, mobile applications, and building scalable architectures.',
+    'I lead a team of developers delivering software for startups and corporate clients, and I design how agents and agentic workflows fit that work. Full-stack, mobile and cloud engineering under all of it.',
   ctaLabel: 'Get in Touch',
   ctaHref: '#contact',
   socials: [
@@ -263,8 +266,9 @@ export const HERO: HeroContent = {
 export const ABOUT: AboutContent = {
   heading: { lead: 'About ', accent: 'Me' },
   paragraphs: [
-    'As the Head of Development at Brave Digital, I lead a talented team of developers in delivering cutting-edge software solutions for our diverse clientele. My primary responsibilities include scoping and architecting projects, overseeing developer growth and wellbeing, guiding technical strategy, and ensuring that we deliver high-quality products on time and within budget.',
-    'I have extensive experience in full-stack development with Laravel, NodeJS, Vue, and React, as well as mobile app development with Flutter, React Native, and Swift. I also manage DevOps, including web servers, cloud infrastructure, and app deployment.',
+    'As Head of Development at Brave Digital I lead a team of developers delivering software for a diverse client base. I scope and architect projects, guide technical strategy, look after developer growth and wellbeing, and make sure we ship quality work on time and on budget.',
+    'A growing part of that job is managing agents as well as developers: deciding where an agent is given work, how it is given context, how far it is trusted to act on its own, and how its output is reviewed before it reaches a client. I build these workflows with Claude, Gemini and OpenCode, prove them out on personal projects in my homelab, and bring into the team only what holds up. So far they have paid off most in AI-driven data manipulation and porting, AI-assisted test development, and scoping and documentation.',
+    'All of that sits on full-stack experience with Laravel, Node.js, Vue and React, mobile apps with Flutter, React Native and Swift, and DevOps across web servers, cloud infrastructure and deployment.',
   ],
   asides: [
     {
@@ -296,7 +300,7 @@ export const EXPERIENCE: ExperienceContent = {
       company: 'Brave Digital',
       period: '2021 - Present',
       description:
-        "Lead a team of around 5-10 developers. I set how we adopt AI and agentic development across the team's process — how context is given, how agents are set up, and where an agent is trusted to act on its own — alongside scoping and architecting projects, technical strategy, developer growth and delivery quality. I manage DevOps including web servers, cloud infrastructure and app deployment, and still work as a senior developer on projects to help the team hit budgets and deadlines.",
+        "Lead a team of around 5-10 developers. I set how we adopt AI and agentic development across the team's process: how context is given, how agents are set up, where an agent is trusted to act on its own, and how AI-generated code is reviewed for correctness before it reaches a client. That runs alongside scoping and architecting projects, technical strategy, developer growth and delivery quality. I manage DevOps including web servers, cloud infrastructure and app deployment, and still work as a senior developer on projects to help the team hit budgets and deadlines.",
       tech: [
         'AI Agents',
         'Claude',
@@ -332,10 +336,12 @@ export const EXPERIENCE: ExperienceContent = {
       company: 'Freelance',
       period: '2014 - Present',
       description:
-        'I take on diverse projects outside normal responsibilities to expand skillset and grow professionally. I proactively seek opportunities that challenge learning of new technologies and frameworks. Work with clients from different industries, honing adaptability, communication, and time management skills.',
+        'Independent work for clients across industries, increasingly AI-led. I review AI-generated code and software for correctness. On the last two platforms I also built a review harness into the codebase using AGENTS.md and Skills, so every pass starts with the context it needs. I have shipped two sites built end to end with AI: an event signup site with galleries, RSVP and user-facing uploads, and a site for a bed and breakfast.',
       tech: [
+        'AI Code Review',
+        'Agentic Delivery',
+        'AGENTS.md',
         'Web Development',
-        'Mobile Development',
         'Consulting',
         'Full-Stack',
       ],
@@ -433,20 +439,20 @@ export const INTERESTS: InterestsContent = {
     'I love continually developing my knowledge and experimenting with new technologies. This section is updated as I tackle new things and hopefully succeed at some of them.',
   cards: [
     {
-      heading: { accent: 'AI agentic', trail: ' Skills & Prompting' },
+      heading: { accent: 'AI agentic', trail: ' orchestration' },
       span: 'wide',
       paragraphs: [
-        "AI has become a core part of life for developers and I've been working on how to best adopt AI and Agentic development to my and my devs processess. I've been building skills with Claude, Gemini and OpenCode and figuring out how to set up agents, both for development and for independent action.",
-        "I've been refining the process of providing context through experimentation and learning from the community, and practicing this with personal projects in my homelab and on our internal projects.",
-        "I've even been experimenting with AI driven scoping and documentation, AI driven test development and most succesfully AI driven data manipulation and data porting.",
+        'The part I keep coming back to is context and control: what an agent needs to know, when it needs to know it, and how far it can run before the quality drops. Most of my experimenting now goes into orchestration, getting several agents to carry a piece of work between them without a person steering every step.',
+        "I'm experimenting with building my own orchestration layer, and I use tools like Paperclip to test the idea: agents that pick work off a board, do it, and come back for a decision only when one is actually needed. Alongside that I work with OpenCode, and I run Claude over ACP, so the same agent can sit behind different front ends instead of the whole process being tied to one vendor.",
+        'Next is pushing more of the scoping, documentation and review into that loop, and finding out how much of it holds up with me out of the middle.',
       ],
     },
     {
-      heading: { lead: 'Learning ', accent: 'Go' },
+      heading: { lead: 'Small games in ', accent: 'Godot' },
       span: 'half',
       paragraphs: [
-        "I am currently pursuing learing Go through boot.dev, as an alternative to Dart that has a bit wider application and community support. I love the idea of a fast, cross-platform, strongly typed language where concurrency isn't black magic, and with a decent standard library.",
-        "After doing some server applications and microservices, and maybe some TUI's I am planning on trying to tackle Godot and make some small games.",
+        "I'm experimenting with Godot, building small games and seeing how far I can take them. It is the one corner of programming I have never worked in properly, so everything there is new.",
+        "That runs next to learning Go through boot.dev, as an alternative to Dart with a bit wider application and community support. I love the idea of a fast, cross-platform, strongly typed language where concurrency isn't black magic, and with a decent standard library. Server applications, microservices and maybe a TUI are the plan there.",
       ],
     },
     {
@@ -558,7 +564,7 @@ export const ERROR: ErrorContent = {
     title: 'Server error',
     heading: { lead: 'Something ', accent: 'broke' },
     message:
-      'The server hit an error handling that request. Try again in a moment — if it keeps happening, get in touch and tell me what you were doing.',
+      'The server hit an error handling that request. Try again in a moment. If it keeps happening, get in touch and tell me what you were doing.',
   },
   fallback: {
     title: 'Something went wrong',
