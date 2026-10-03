@@ -94,15 +94,15 @@ export default defineNuxtConfig({
      * to build for something else.
      */
     preset: process.env.NITRO_PRESET || 'node-server',
-    prerender: {
-      /**
-       * `/` is prerendered at build time, so the first hit is served as static
-       * HTML with the full page in it. Routes added later render on demand
-       * without any config change.
-       */
-      routes: ['/'],
-      crawlLinks: true,
-    },
+    /**
+     * Nothing is prerendered, deliberately. `/` used to be, which saved a few
+     * milliseconds on the first cold hit; but `server/plugins/content-
+     * security-policy.ts` puts a per-request nonce in the HTML, and a nonce
+     * baked into a static file at build time is the same nonce for every
+     * visitor — which is worth nothing. The app server-renders every request
+     * either way, and Nitro's route cache covers the cold-start cost.
+     */
+    prerender: { routes: [], crawlLinks: false },
   },
 
   /**

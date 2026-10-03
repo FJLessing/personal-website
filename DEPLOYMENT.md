@@ -95,6 +95,9 @@ npm ci          # installs from the lockfile; `nuxt prepare` runs on postinstall
 npm run build   # default preset is node-server — no NITRO_PRESET needed
 ```
 
+There is no `index.html` in the output. Nothing is prerendered: every request
+is server-rendered, because the CSP nonce has to be new each time (section 5).
+
 `npm run build` must finish with:
 
 ```
@@ -107,10 +110,8 @@ npm run build   # default preset is node-server — no NITRO_PRESET needed
 .output/
   nitro.json            build metadata: preset, Nitro and Nuxt versions, build date
   public/               everything served as a static file
-    index.html          `/` is prerendered at build time — the full page, as HTML
-    _payload.json       the prerendered route's data payload
     _nuxt/              hashed JS/CSS bundles (e.g. entry.hBqxuVnq.css)
-    bg/                 prerendered /bg/* demo routes
+    fonts/              the self-hosted IBM Plex woff2 subsets
     favicon.ico, profile.png, site.webmanifest, … (copied from public/)
   server/
     index.mjs           the entry point you run
@@ -409,7 +410,17 @@ meaningless — it belongs on `:443` only.
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
-    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; manifest-src 'self'; upgrade-insecure-requests"
+
+    # NO Content-Security-Policy here. The app sets it, with a per-request
+    # nonce, in server/plugins/content-security-policy.ts. Two CSP headers do
+    # not merge — the browser enforces the intersection of both, which is
+    # almost never what either author intended. If you add one back here you
+    # will break the app's, probably without an obvious error.
+
+    # Framing, for the responses the app never sees: a 502 while Node is down,
+    # or anything Apache answers itself. The app's CSP carries
+    # `frame-ancestors 'none'` on every page it renders; this covers the rest.
+    Header always set X-Frame-Options "DENY"
 
     # Nitro stamps `X-Powered-By: Nuxt` on its error responses. It tells an
     # attacker what to look up and nobody else anything. `always` because the
@@ -451,7 +462,7 @@ sudo systemctl reload apache2
 | `X-Content-Type-Options`     | Apache  | One value, every response, including Apache's own error pages. The app never sees a request that Apache rejects.                                     |
 | `Referrer-Policy`            | Apache  | Same: one site-wide value, no per-route variation.                                                                                                   |
 | `Permissions-Policy`         | Apache  | Same.                                                                                                                                                |
-| `Content-Security-Policy`    | Apache  | Same — until the app needs a per-request nonce (see below), at which point it has to move.                                                           |
+| `Content-Security-Policy`    | **App** | It carries a per-request nonce, so only the thing rendering the HTML can set it. The vhost must not set it as well — see below.                      |
 | `X-Powered-By` (unset)       | Apache  | Nitro sets it on error responses. Stripping it at the proxy covers every path, including ones the app never reaches.                                 |
 | `Content-Type`               | **App** | Nitro knows the type of each response. Apache must not override it, which is exactly what `nosniff` relies on.                                       |
 | `Cache-Control` on `/_nuxt/` | **App** | Nitro already emits `public, max-age=31536000, immutable` because it knows the filenames are content-hashed. Apache uses `setifempty`, so it defers. |
@@ -477,47 +488,58 @@ curl -sD- -o/dev/null -H 'Accept: text/html' http://127.0.0.1:3000/nope
 #   x-powered-by: Nuxt
 ```
 
-The JSON error is Nitro's own; the HTML one renders `app/error.vue` through the
-page renderer, which stamps `X-Powered-By` instead. The vhost unsets that and
-sets the real CSP on every response, so there is no gap and nothing is
-duplicated: `Header always set` **replaces** rather than appends, so Apache's
-value is the one that reaches the browser. `X-Frame-Options: DENY` survives,
-and it says the same thing as `frame-ancestors 'none'`.
+The JSON error is Nitro's own. The HTML one renders `app/error.vue` through the
+page renderer, which is where `server/plugins/content-security-policy.ts` runs,
+so that response carries the full nonced CSP and Nitro's narrow one never
+appears. It also carries `X-Powered-By: Nuxt`, which the vhost unsets.
 
-If a future change adds headers in `nuxt.config.ts` via `routeRules`, **delete
-the matching line from the vhost at the same time.** Two `Content-Security-Policy`
-headers do not merge — the browser enforces the intersection, which is almost
-never what either author intended, and is a very annoying bug to find.
+Nothing is duplicated. `Header always set` **replaces** rather than appends, so
+for the headers Apache does set, Apache's value is the one that reaches the
+browser. The app's `X-Frame-Options: DENY` and the vhost's are the same value.
+
+**The vhost must never set `Content-Security-Policy`.** Two CSP headers do not
+merge — the browser enforces the intersection of both, which is almost never
+what either author intended, and is a very annoying bug to find. The same rule
+applies to anything a future `routeRules` adds: if the app starts setting a
+header, delete the vhost's copy in the same commit.
 
 ### The CSP, directive by directive
 
 Every value below was derived from the actual rendered HTML of a production
 build, not guessed:
 
-| Directive                           | Why                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `default-src 'self'`                | Backstop for anything not named.                                                                                                                                                                                                                                                                                    |
-| `script-src 'self' 'unsafe-inline'` | Bundles come from `/_nuxt/` (self). `'unsafe-inline'` is required by two inline blocks Nuxt emits: the import map (`{"imports":{"#entry":"/_nuxt/…"}}`) and the runtime-config script (`window.__NUXT__.config = …`). See the honest note below.                                                                    |
-| `style-src 'self' 'unsafe-inline'`  | `entry.*.css` is self, and so are the `@font-face` rules now that IBM Plex is served from `public/fonts/`. `'unsafe-inline'` covers the one `<style>` block in the head — the `noscript` rule in `nuxt.config.ts` — plus Vue's `style="display:none"` attribute. The scoped background CSS is bundled, not inlined. |
-| `font-src 'self'`                   | The woff2 files are in `public/fonts/`, served by this origin. No third-party font origin is reachable, which is the point: nothing about a visitor reaches Google before the page paints.                                                                                                                          |
-| `img-src 'self'`                    | The only image is `/profile.png`, plus the favicons and manifest icons. No `data:` URIs anywhere in the HTML or the CSS — verified with `grep`. Add `data:` only if that changes.                                                                                                                                   |
-| `connect-src 'self'`                | Hydration fetches `/_payload.json`. Nothing else makes a request. If a contact endpoint is ever added, keep it same-origin and this stays as it is.                                                                                                                                                                 |
-| `manifest-src 'self'`               | `/site.webmanifest`.                                                                                                                                                                                                                                                                                                |
-| `frame-ancestors 'none'`            | Clickjacking. This supersedes `X-Frame-Options`, which is why that header is deliberately absent — setting both just means maintaining two things that say the same thing.                                                                                                                                          |
-| `base-uri 'none'`                   | Stops an injected `<base>` from repointing every relative URL on the page.                                                                                                                                                                                                                                          |
-| `object-src 'none'`                 | No plugins, ever.                                                                                                                                                                                                                                                                                                   |
-| `form-action 'self'`                | The page has no form today. This pins any POST to this origin if one is ever added, and stops an injected form posting elsewhere.                                                                                                                                                                                   |
-| `upgrade-insecure-requests`         | Belt and braces for any `http://` URL that sneaks into content.                                                                                                                                                                                                                                                     |
+| Directive                          | Why                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default-src 'self'`               | Backstop for anything not named.                                                                                                                                                                                                                                                                                             |
+| `script-src 'self' 'nonce-…'`      | Bundles come from `/_nuxt/` (self). The nonce covers the inline blocks Nuxt emits — the import map, the runtime-config script, the JSON-LD and the payload — and is regenerated per request. No `'unsafe-inline'`: with a nonce present, a browser that understands CSP 2+ ignores it anyway, and it is not there to ignore. |
+| `style-src 'self' 'unsafe-inline'` | `entry.*.css` is self, and so are the `@font-face` rules now that IBM Plex is served from `public/fonts/`. `'unsafe-inline'` covers the one `<style>` block in the head — the `noscript` rule in `nuxt.config.ts` — plus Vue's `style="display:none"` attribute. The scoped background CSS is bundled, not inlined.          |
+| `font-src 'self'`                  | The woff2 files are in `public/fonts/`, served by this origin. No third-party font origin is reachable, which is the point: nothing about a visitor reaches Google before the page paints.                                                                                                                                   |
+| `img-src 'self'`                   | The only image is `/profile.png`, plus the favicons and manifest icons. No `data:` URIs anywhere in the HTML or the CSS — verified with `grep`. Add `data:` only if that changes.                                                                                                                                            |
+| `connect-src 'self'`               | Hydration fetches `/_payload.json`. Nothing else makes a request. If a contact endpoint is ever added, keep it same-origin and this stays as it is.                                                                                                                                                                          |
+| `manifest-src 'self'`              | `/site.webmanifest`.                                                                                                                                                                                                                                                                                                         |
+| `frame-ancestors 'none'`           | Clickjacking. It supersedes `X-Frame-Options` on every page the app renders. The vhost sets `X-Frame-Options: DENY` as well, because it is the only framing defence left on a response the app never produced — a 502 while Node is down, for one.                                                                           |
+| `base-uri 'none'`                  | Stops an injected `<base>` from repointing every relative URL on the page.                                                                                                                                                                                                                                                   |
+| `object-src 'none'`                | No plugins, ever.                                                                                                                                                                                                                                                                                                            |
+| `form-action 'self'`               | The page has no form today. This pins any POST to this origin if one is ever added, and stops an injected form posting elsewhere.                                                                                                                                                                                            |
+| `upgrade-insecure-requests`        | Belt and braces for any `http://` URL that sneaks into content.                                                                                                                                                                                                                                                              |
 
-**On `'unsafe-inline'` for scripts — say it plainly:** this is the weak part of
-the policy. Nuxt emits those two inline blocks on every render and their content
-includes the build id, so a static hash in the vhost would break on every
-deploy. Tightening it properly means a per-request nonce threaded from the
-server render into the header, which the app does not do today and which cannot
-be bolted on from Apache alone — Apache cannot know a nonce the app never told it
-about. That is an app-side change and its own ticket. Until then the CSP still
-buys real protection: no third-party script origin can execute, `base-uri` and
-`object-src` are shut, and framing is denied.
+**On the nonce:** `server/plugins/content-security-policy.ts` generates 128
+bits from the CSPRNG per request, stamps it on every `<script>` the render
+emits, and sends the header from the same hook. A build-time hash could not
+have worked: the import map and the runtime-config block both embed the build
+id, so the hash changes on every deploy. Apache could not have done it either,
+because Apache cannot know a value the app never told it.
+
+That is also why **`/` is no longer prerendered**. A nonce baked into a static
+file at build time is the same nonce for every visitor, which is worth nothing.
+The cost is a few milliseconds on the first cold hit; Nitro's route cache
+covers the rest.
+
+**On `style-src 'unsafe-inline'`:** it stays. The `noscript` rule in
+`nuxt.config.ts` and Vue's `style="display:none"` attribute both need it, and a
+nonce cannot cover a style _attribute_ at all. Style-based exfiltration is a far
+weaker primitive than script execution, so `script-src` was the one worth
+closing.
 
 **On HSTS:** `max-age=31536000; includeSubDomains` commits every subdomain of
 `fjlessing.co.za` to HTTPS for a year, in every browser that has visited. Make
@@ -593,7 +615,6 @@ built client-side. That is a regression, not a cosmetic issue.
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' https://www.fjlessing.co.za/            # 200
-curl -sS -o /dev/null -w '%{http_code}\n' https://www.fjlessing.co.za/bg/one      # 200
 curl -sS -o /dev/null -w '%{http_code}\n' https://www.fjlessing.co.za/nope        # 404
 curl -sS -o /dev/null -w '%{http_code}\n' https://www.fjlessing.co.za/favicon.ico # 200
 ```
@@ -623,7 +644,27 @@ curl -sS -o /dev/null -D - https://www.fjlessing.co.za/ \
 
 Expect one line each for HSTS, CSP, nosniff, Referrer-Policy and
 Permissions-Policy; `cache-control: no-cache` for the HTML. **Exactly one line
-per header name** — two means something is setting it twice.
+per header name** — two CSP lines means the vhost has grown a copy of the one
+the app sets, and the browser will quietly enforce the intersection.
+
+The CSP itself has to be different on every request:
+
+```bash
+for i in 1 2; do
+  curl -sS -o /dev/null -D - https://www.fjlessing.co.za/ \
+    | grep -io "nonce-[^']*"
+done
+# expect: two different values
+```
+
+And the nonce in the header must match the one in the HTML, or no script runs:
+
+```bash
+curl -sS -D /tmp/h https://www.fjlessing.co.za/ > /tmp/b
+grep -o "nonce-[^']*" /tmp/h | sed 's/nonce-//'
+grep -o 'nonce="[^"]*"' /tmp/b | sort -u
+# expect: one value, and every <script> carrying it
+```
 
 Compression:
 

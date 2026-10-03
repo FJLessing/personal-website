@@ -117,6 +117,9 @@ app/
     scene.ts                    the contract the runtime drives
     contourScene.ts             the isoline height field itself
     palette.ts                  the colour budget, both ends of it
+server/
+  plugins/
+    content-security-policy.ts  the CSP, with a per-request nonce
 scripts/
   background-cost.ts            per-frame cost at 360px and 1440px
   background-contrast.ts        the colour budget as a printed table
@@ -129,6 +132,22 @@ test/
   background-runtime.spec.ts    reduced motion, pausing, small-screen caps
   support/tailwind-palette.ts   Tailwind's OKLCH tokens resolved to sRGB
 ```
+
+### The app sets its own CSP
+
+`server/plugins/content-security-policy.ts` generates a 128-bit nonce per
+request, stamps it on every `<script>` the render emits, and sends the matching
+`Content-Security-Policy` header from the same hook. That is what lets
+`script-src` be `'self' 'nonce-…'` instead of `'self' 'unsafe-inline'`.
+
+It has to be the app rather than the Apache vhost, because Apache cannot know a
+value the app never told it, and a build-time hash cannot work either: the
+import map and the runtime-config block both embed the build id, so the hash
+would change on every deploy.
+
+**The vhost must not set `Content-Security-Policy` as well.** Two CSP headers do
+not merge; the browser enforces the intersection of both. `DEPLOYMENT.md`
+section 5 has the rest.
 
 ### The fonts are self-hosted
 
@@ -253,10 +272,11 @@ server to `.output/`:
   server/index.mjs              the entry point, this is what you run
 ```
 
-`/` is prerendered at build time, so the first hit is served from a cached HTML
-file with the whole page already in it rather than rendered per request. Routes
-added later render on demand with no config change. Override the preset with
-`NITRO_PRESET` when building for somewhere else.
+Every request is server-rendered; nothing is prerendered. `/` used to be, but
+the CSP nonce in `server/plugins/content-security-policy.ts` has to be new on
+every response, and a nonce baked into a static file is the same one for every
+visitor. Override the preset with `NITRO_PRESET` when building for somewhere
+else.
 
 ### Running it
 
