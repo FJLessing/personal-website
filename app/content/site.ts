@@ -94,11 +94,16 @@ export interface SiteMeta {
   readonly url: string
   readonly image: string
   readonly imageAlt: string
+  /** Intrinsic pixels of `image`, so Open Graph can state them. */
+  readonly imageWidth: number
+  readonly imageHeight: number
   readonly locale: string
   readonly themeColor: string
   readonly twitterHandle: string
   readonly jobTitle: string
   readonly employer: string
+  /** The one institution the About section names, for structured data. */
+  readonly alumniOf: string
   readonly socialProfiles: readonly string[]
   readonly knowsAbout: readonly string[]
   /** Shorter copy for Open Graph / Twitter, which truncate aggressively. */
@@ -219,11 +224,14 @@ export const SITE_META: SiteMeta = {
   url: 'https://www.fjlessing.co.za',
   image: 'https://www.fjlessing.co.za/profile.png',
   imageAlt: 'FJ Lessing - Professional Headshot',
+  imageWidth: 620,
+  imageHeight: 617,
   locale: 'en_US',
   themeColor: '#ffc614',
   twitterHandle: '@FJLessing',
   jobTitle: 'Head of Development',
   employer: 'BRAVE Digital',
+  alumniOf: 'University of Pretoria',
   socialProfiles: [
     'https://www.linkedin.com/in/fj-lessing/',
     'https://github.com/FJLessing',
