@@ -1,5 +1,7 @@
 import { randomBytes } from 'node:crypto'
 
+import { stampScriptNonce } from '../utils/script-nonce'
+
 /**
  * Sets the Content-Security-Policy, with a fresh nonce per request.
  *
@@ -21,10 +23,11 @@ import { randomBytes } from 'node:crypto'
  * `/` is deliberately not prerendered (see `nuxt.config.ts`): a nonce baked
  * into a static file at build time is the same nonce for every visitor, which
  * is worth exactly nothing.
+ *
+ * The nonce goes on `head`, `bodyPrepend` and `bodyAppend` only. `html.body`
+ * is the rendered app, and is excluded on purpose: stamping it would approve
+ * any `<script>` that reached a component's markup. See `stampScriptNonce`.
  */
-
-/** Every inline and external `<script>` the render emits. */
-const SCRIPT_TAG = /<script(?![^>]*\bnonce=)/g
 
 /**
  * `style-src` keeps `'unsafe-inline'`. The `noscript` block in
@@ -55,16 +58,7 @@ export default defineNitroPlugin((nitro) => {
     // entropy and a value that is unguessable before the response is sent.
     const nonce = randomBytes(16).toString('base64')
 
-    for (const section of [
-      html.head,
-      html.bodyPrepend,
-      html.body,
-      html.bodyAppend,
-    ]) {
-      for (const [index, chunk] of section.entries()) {
-        section[index] = chunk.replace(SCRIPT_TAG, `<script nonce="${nonce}"`)
-      }
-    }
+    stampScriptNonce(html, nonce)
 
     setResponseHeader(event, 'content-security-policy', policy(nonce))
   })
