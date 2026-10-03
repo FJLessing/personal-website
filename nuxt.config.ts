@@ -18,7 +18,7 @@ export default defineNuxtConfig({
     public: {
       /**
        * Contact form target. The reference site posted to a PHP script that
-       * relayed to Slack; Cloudflare Pages has no PHP runtime, so this is
+       * relayed to Slack; a Nitro Node server has no PHP runtime, so this is
        * configurable and the replacement endpoint is a separate ticket.
        * Override with `NUXT_PUBLIC_CONTACT_ENDPOINT`.
        */

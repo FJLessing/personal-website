@@ -1,7 +1,7 @@
 # personal-website
 
 [fjlessing.co.za](https://www.fjlessing.co.za) — a Nuxt 4 / Vue 3 site rendered on
-the server and deployed to Cloudflare Pages.
+the server, running as a long-lived Node process behind an Apache reverse proxy.
 
 This replaces the earlier React + Vite build
 (`FJLessing/react-personal-website`, now reference-only). None of that repo's
@@ -23,20 +23,19 @@ npm run dev     # http://localhost:3000
 
 Other scripts:
 
-| Script               | What it does                                               |
-| -------------------- | ---------------------------------------------------------- |
-| `npm run build`      | Production build for Cloudflare Pages, output in `dist/`   |
-| `npm run build:node` | Same app built as a Node SSR server, output in `.output/`  |
-| `npm run preview`    | Serves the last build                                      |
-| `npm run lint`       | ESLint                                                     |
-| `npm run format`     | Prettier, writing in place (`format:check` to verify only) |
-| `npm run typecheck`  | `vue-tsc` in strict mode, via `nuxt typecheck`             |
-| `npm run test`       | Vitest                                                     |
+| Script              | What it does                                               |
+| ------------------- | ---------------------------------------------------------- |
+| `npm run build`     | Production build — a Node SSR server in `.output/`         |
+| `npm run preview`   | Serves the last build (`.output/server/index.mjs`)         |
+| `npm run lint`      | ESLint                                                     |
+| `npm run format`    | Prettier, writing in place (`format:check` to verify only) |
+| `npm run typecheck` | `vue-tsc` in strict mode, via `nuxt typecheck`             |
+| `npm run test`      | Vitest                                                     |
 
 To check the server-rendered HTML the way a crawler sees it:
 
 ```bash
-npm run build:node
+npm run build
 PORT=3000 node .output/server/index.mjs &
 curl -s http://127.0.0.1:3000/ | less
 ```
@@ -104,8 +103,8 @@ what the previous site used via `lucide-react`.
 **The form has no working endpoint yet.** This needs a follow-up before the site
 goes live.
 
-The previous site posted a Slack Block Kit payload to `/slack-proxy.php`.
-Cloudflare Pages has no PHP runtime, so that endpoint does not exist here, and
+The previous site posted a Slack Block Kit payload to `/slack-proxy.php`. A Nitro
+Node server has no PHP runtime, so that endpoint does not exist here, and
 composing the Slack payload in the browser is not worth reproducing — it puts the
 message format in public and turns the proxy into an open relay.
 
@@ -122,50 +121,73 @@ defaulting to `/api/contact`:
 ```
 
 Any 2xx is treated as success; anything else shows the error message. A
-replacement endpoint (a Nitro server route or a Cloudflare Pages Function,
-holding the webhook URL as a secret and rate-limiting submissions) is a separate
-ticket. Until it exists, the email and phone links in the same section still
-work.
+replacement endpoint — a Nitro server route under `server/api/`, holding the
+webhook URL as a secret and rate-limiting submissions — is a separate ticket.
+Until it exists, the email and phone links in the same section still work.
 
 ---
 
 ## Deploying
 
-**Nothing here creates a Cloudflare project, deploys, or touches DNS.** This is
-configuration only; the deploy itself needs sign-off.
+**The step-by-step server guide is [`DEPLOYMENT.md`](DEPLOYMENT.md)** — Apache
+modules, the vhost, TLS, the systemd unit, security headers, verification,
+updates and rollback. This section covers only what the build produces; it does
+not repeat any of that.
 
-### Cloudflare Pages settings
-
-| Setting                | Value           |
-| ---------------------- | --------------- |
-| Framework preset       | Nuxt            |
-| Build command          | `npm run build` |
-| Build output directory | `dist`          |
-| Root directory         | `/`             |
-| Node version           | `22`            |
-
-`wrangler.toml` in the repo root carries the same output directory plus the
-`nodejs_compat` compatibility flag. That flag is **required** — Nitro's
-Cloudflare output imports Node built-ins, and without it the Worker fails at
-runtime. If the project is created through the dashboard rather than from
-`wrangler.toml`, set it under _Settings → Functions → Compatibility flags_ for
-both production and preview.
+**Nothing here deploys anything or touches DNS.** This is build configuration
+only; putting the site on a live host needs sign-off.
 
 ### What the build produces
 
-`nitro.preset` is `cloudflare_pages`. `/` is prerendered at build time, so
-Cloudflare serves static HTML with the whole page already in it. The Worker is
-still deployed alongside, so a route added later renders on demand with no
-config change. Override the preset with `NITRO_PRESET` when building for
-somewhere else.
+`nitro.preset` is `node-server`, so `npm run build` writes a self-contained Node
+server to `.output/`:
 
-### Deploying by hand
+```
+.output/
+  nitro.json                    build metadata (preset, versions)
+  public/                       static assets, served by the Node server
+  server/index.mjs              the entry point — this is what you run
+```
+
+`/` is prerendered at build time, so the first hit is served from a cached HTML
+file with the whole page already in it rather than rendered per request. Routes
+added later render on demand with no config change. Override the preset with
+`NITRO_PRESET` when building for somewhere else.
+
+### Running it
 
 ```bash
 npm ci
 npm run build
-npx wrangler pages deploy dist --project-name personal-website
+PORT=3000 HOST=127.0.0.1 node .output/server/index.mjs
 ```
+
+It prints `Listening on http://127.0.0.1:3000` and serves the whole site —
+`.output/` is self-contained, so `node_modules` is not needed at runtime.
+
+| Variable | Default              | What it does                     |
+| -------- | -------------------- | -------------------------------- |
+| `PORT`   | `3000`               | Port to bind (`NITRO_PORT` also) |
+| `HOST`   | `::`, all interfaces | Interface to bind (`NITRO_HOST`) |
+
+Set `HOST` explicitly. Left alone the server binds every interface, which is the
+wrong default for a process that should only be reachable through the proxy.
+
+### The server shape
+
+Bind to `127.0.0.1` on a fixed port and let **Apache** own the public side: it
+terminates TLS on the vhost and reverse-proxies to that port. Nothing but the
+proxy should be able to reach the Node process.
+
+The Node process is long-lived and nothing restarts it on its own, so a service
+manager — systemd on the target host — has to start it at boot and restart it on
+failure. Without that the site is down after the first reboot or crash.
+
+[`DEPLOYMENT.md`](DEPLOYMENT.md) has the whole procedure: which Apache modules
+to enable, a copy-pasteable `:443` vhost with the proxy, compression, cache and
+security headers, the `:80` redirect, a Let's Encrypt note, the systemd unit and
+its start/stop/log commands, `curl` checks that prove SSR survives the proxy,
+and the update and rollback steps.
 
 ---
 
@@ -180,7 +202,7 @@ tag.
 
 `npm audit --omit=dev` reports **zero** vulnerabilities, and CI fails if that
 changes. There are no runtime `dependencies` in this repo, so that covers
-everything that reaches a browser or the Worker.
+everything that reaches a browser or the Node server.
 
 A full `npm audit` currently reports 12 high-severity advisories, all of them in
 Nuxt's own build-time tree and all tracing to two packages with **no fixed
