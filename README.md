@@ -47,6 +47,47 @@ curl -s http://127.0.0.1:3000/ | less
 
 Every section's text is in that HTML. If it is not, something regressed.
 
+### Looking at it in a real browser
+
+`curl` proves the HTML is there. It does not prove the page is readable, that
+the layout holds at 360px, or that hydration ran without complaint. For that
+there is a headless Chromium, installed on demand:
+
+```bash
+npm run browser:install          # once per container, ~700 MB, a few minutes
+npm run screenshot -- http://127.0.0.1:3000/ --label home
+```
+
+`screenshot` loads the URL at 360px, 768px and 1440px, writes a full-page PNG
+per width into `.tmp/shots`, and **exits non-zero** if the page logged a console
+error, threw, failed a request, scrolled sideways, or rendered text at zero
+width because no font was found. That makes it usable as a check, not just a
+picture-taker:
+
+```bash
+npm run screenshot -- http://127.0.0.1:3000/not-a-real-page --label error404
+```
+
+Options: `--widths 360,1440`, `--out some/dir`, `--label name`, `--wait <css
+selector>` to hold until something appears.
+
+The installer exists because this project is developed in a Debian container
+with no browser, no X server and no root. It unpacks Chromium's shared
+libraries into a private sysroot with `dpkg-deb -x` and fetches Playwright's
+Chromium build beside the checkout, at `../.tools/headless-browser`. Nothing is
+installed system-wide and **nothing is added to `package.json`** — `npm ci`
+still installs the same dependency tree it did before. Set
+`HEADLESS_BROWSER_HOME` to put it somewhere else; re-running the installer
+skips whatever is already in place, and `--force` redoes it.
+
+For ad-hoc Playwright work rather than screenshots, source the generated
+environment and script against the driver directly:
+
+```bash
+. ../.tools/headless-browser/env.sh
+chromium --version
+```
+
 ---
 
 ## How it is put together

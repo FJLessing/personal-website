@@ -23,6 +23,8 @@
     "test": "vitest run",
     "bg:cost": "vite-node scripts/background-cost.ts",
     "bg:contrast": "vite-node scripts/background-contrast.ts",
+    "browser:install": "scripts/install-headless-browser.sh",
+    "screenshot": "node scripts/screenshot.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {

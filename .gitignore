@@ -26,3 +26,9 @@ npm-debug.log*
 
 # Local tooling caches
 .eslintcache
+
+# Headless browser install (scripts/install-headless-browser.sh) and the
+# screenshots it writes. The browser normally lands beside the checkout, not
+# inside it; .tools is here in case HEADLESS_BROWSER_HOME is pointed in.
+.tools
+.tmp
