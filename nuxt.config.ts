@@ -88,24 +88,42 @@ export default defineNuxtConfig({
 
   nitro: {
     /**
-     * Cloudflare Pages is the deploy target. Override with `NITRO_PRESET` to
-     * build for something else, e.g. `NITRO_PRESET=node-server npm run build`
-     * for a local SSR server (that is what `npm run build:node` does).
+     * A plain Node SSR server is the deploy target: `node .output/server/
+     * index.mjs` behind an Apache reverse proxy. Override with `NITRO_PRESET`
+     * to build for something else.
      */
-    preset: process.env.NITRO_PRESET || 'cloudflare_pages',
+    preset: process.env.NITRO_PRESET || 'node-server',
     prerender: {
       /**
-       * `/` is prerendered at build time, so Cloudflare serves static HTML with
-       * the full page in it. Routes added later render on demand without any
-       * config change.
+       * `/` is prerendered at build time, so the first hit is served as static
+       * HTML with the full page in it. Routes added later render on demand
+       * without any config change.
        */
       routes: ['/'],
       crawlLinks: true,
     },
   },
 
+  /**
+   * The dev server runs inside a Docker container, so it has to listen on all
+   * interfaces to be reachable from the host. Port is fixed so the published
+   * container port never moves.
+   */
+  devServer: {
+    host: '0.0.0.0',
+    port: Number(process.env.NUXT_DEV_PORT || 3000),
+  },
+
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      /**
+       * Dev only. Vite rejects requests whose Host header it does not know,
+       * which blocks review through a hostname or a reverse proxy. The dev
+       * server is not exposed to the public internet.
+       */
+      allowedHosts: true,
+    },
   },
 
   devtools: { enabled: false },
