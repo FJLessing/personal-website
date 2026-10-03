@@ -69,10 +69,21 @@ app/
     SiteFooter.vue
     SectionHeading.vue          heading with one accented run of words
     AppIcon.vue                 the eight inlined SVG icons
-    SiteBackground.client.vue   mount point for the animated background
+    SiteBackground.client.vue   the animated background, mounted client-side
+  composables/
+    useBackgroundCanvas.ts      canvas runtime: rAF, reduced motion, pausing
+  utils/backgrounds/
+    scene.ts                    the contract the runtime drives
+    contourScene.ts             the isoline height field itself
+    palette.ts                  the colour budget, both ends of it
+scripts/
+  background-cost.ts            per-frame cost at 360px and 1440px
+  background-contrast.ts        the colour budget as a printed table
 test/
   sections.spec.ts              a smoke test per section
   hydration.spec.ts             server render vs. client hydrate, per section
+  backgrounds.spec.ts           scene cost caps and the colour budget
+  background-runtime.spec.ts    reduced motion, pausing, small-screen caps
 ```
 
 ### Content lives in one file
@@ -82,14 +93,19 @@ an exported interface. Changing a sentence means editing that file and nothing
 else; adding a field to an interface fails the type check until the content is
 filled in.
 
-### The background slot
+### The background
 
-`app/components/SiteBackground.client.vue` is deliberately empty. The `.client`
-suffix means Nuxt never renders it on the server, so whatever mounts there may
-use `window`, `document`, `requestAnimationFrame` and a canvas freely without
+`app/components/SiteBackground.client.vue` draws **Contour**: a slow
+topographic height field — four soft peaks drifting on Lissajous paths —
+sampled onto a grid and traced as isolines with marching squares. The cursor
+presses a dent into the terrain, so the lines bunch up around it.
+
+The `.client` suffix means Nuxt never renders it on the server, so it may use
+`window`, `document`, `requestAnimationFrame` and a canvas freely without
 breaking SSR or causing a hydration mismatch. The solid `#0d0d0d` backdrop
 behind it is painted in `app.vue` with CSS, so the page looks right with
-JavaScript disabled or still loading.
+JavaScript disabled or still loading. It is `aria-hidden`, it is
+`pointer-events-none`, and it is decoration: the page reads fine without it.
 
 That wrapper in `app.vue` carries `isolate`, and it has to. Without a stacking
 context on it, its own background paints _after_ its negative-z-index
@@ -97,15 +113,23 @@ children, so the background layer ends up underneath the page colour. It still
 renders — it is just multiplied down to a tenth of its brightness, which looks
 like a background that does not work rather than one that is mis-stacked.
 
-Whatever lands there must cap work on small screens, pause when the tab is
-hidden, honour `prefers-reduced-motion: reduce`, stay behind the content
-(`-z-10`) and never swallow pointer events.
+The split is deliberate. `app/utils/backgrounds/contourScene.ts` is a plain
+module that only ever touches a 2D context — no DOM, no timers — which is what
+lets it be driven from Node to measure cost. Everything browser-shaped lives in
+`app/composables/useBackgroundCanvas.ts`, and that is where the rules are
+enforced in one place: `prefers-reduced-motion: reduce` draws a single still
+frame and never starts the loop, the loop stops when the tab is hidden or the
+canvas scrolls off-screen, the backing store is capped (harder on small
+screens), and the scene is told it is small so it can coarsen its own grid.
 
-Its colours come from `app/utils/backgrounds/palette.ts`, which is the one
-place the alphas live. Backgrounds are translucent layers over a known opaque
-backdrop, so "bright enough to see" and "dim enough to read text over" are
-both arithmetic: `npm run bg:contrast` prints the table and
-`test/backgrounds.spec.ts` asserts both ends of it.
+`npm run bg:cost` prints the per-frame cost at 360px and 1440px;
+`test/backgrounds.spec.ts` asserts the phone stays under 75% of the desktop
+work, so the cap cannot silently regress.
+
+Colours come from `app/utils/backgrounds/palette.ts`, the one place the alphas
+live. The background is a translucent layer over a known opaque backdrop, so
+"bright enough to see" and "dim enough to read text over" are both arithmetic:
+`npm run bg:contrast` prints the table and the test asserts both ends of it.
 
 ### Icons
 

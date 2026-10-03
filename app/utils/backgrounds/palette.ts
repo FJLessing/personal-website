@@ -1,7 +1,7 @@
 /**
- * Shared colour budget for the background concepts.
+ * Colour budget for the site background.
  *
- * Every background is a translucent layer over one known opaque backdrop, so
+ * The background is a translucent layer over one known opaque backdrop, so
  * "is it bright enough to see" and "is it dim enough to read text over" are
  * both arithmetic rather than taste. The numbers live here, in one place, and
  * `test/backgrounds.spec.ts` asserts both ends of the range so neither can
@@ -9,11 +9,11 @@
  *
  * The two bounds:
  *
- *   - **Floor.** The faintest thing a background draws must clear
+ *   - **Floor.** The faintest thing the background draws must clear
  *     {@link MIN_VISIBLE_CONTRAST} against the backdrop. Below roughly 1.1:1 a
  *     one-pixel line disappears into 8-bit quantisation and panel dither — it
  *     renders, but nobody sees it.
- *   - **Ceiling.** The brightest pixel a background draws must stay under
+ *   - **Ceiling.** The brightest pixel the background draws must stay under
  *     {@link MAX_HIGHLIGHT_LUMINANCE}, which is where 14px yellow-500 text
  *     sitting directly on top of it still clears WCAG AA at 4.5:1. Yellow on
  *     amber is the tightest pairing on the page; white body copy has far more
@@ -30,12 +30,6 @@ export const PAGE_BASE: Rgb = [13, 13, 13]
 
 /** The site accent, borrowed rather than reinvented. */
 export const ACCENT: Rgb = [240, 177, 0]
-
-/** Warm near-white, for the hottest highlight in a scene. */
-export const ACCENT_HOT: Rgb = [255, 236, 178]
-
-/** A cooler amber for the second aurora layer, so it is not one flat wash. */
-export const ACCENT_WARM: Rgb = [245, 160, 45]
 
 /** Body copy. */
 export const BODY_TEXT: Rgb = [255, 255, 255]
@@ -55,26 +49,6 @@ export const MAX_HIGHLIGHT_LUMINANCE = 0.07
  */
 export const CONTOUR_ALPHA_LOW = 0.14
 export const CONTOUR_ALPHA_HIGH = 0.34
-
-/** Glyph field: peak alpha of a glyph at full power, and under the cursor. */
-export const GLYPH_ALPHA_PEAK = 0.3
-export const GLYPH_ALPHA_HOT = 0.26
-
-/** Glyph field, reduced-motion still frame: dimmest and brightest glyph. */
-export const GLYPH_STILL_ALPHA_LOW = 0.12
-export const GLYPH_STILL_ALPHA_HIGH = 0.28
-
-/**
- * Aurora: centre alpha of each drifting gradient, the dot grid, and the
- * vignette that protects the middle of the page. The three gradients are
- * corner-anchored, but they do overlap, so the test checks the stacked worst
- * case rather than each one on its own.
- */
-export const AURORA_ALPHA_ONE = 0.17
-export const AURORA_ALPHA_TWO = 0.13
-export const AURORA_ALPHA_THREE = 0.08
-export const AURORA_GRAIN_ALPHA = 0.09
-export const AURORA_VIGNETTE_ALPHA = 0.4
 
 const channel = (value: number) => {
   const c = value / 255

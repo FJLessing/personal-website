@@ -9,9 +9,6 @@
  * draw calls and measure frame cost.
  */
 
-/** Which concept the current route mounts. Temporary: the three demos use it. */
-export type BackgroundVariant = 'contour' | 'glyphs' | 'aurora'
-
 export interface SceneSize {
   /** Viewport width in CSS pixels. The context is pre-scaled, so draw in these. */
   width: number

@@ -1,5 +1,5 @@
 /**
- * Prints the per-frame cost of each background scene at the two viewports the
+ * Prints the per-frame cost of the background scene at the two viewports the
  * brief asks about. Run with `npm run bg:cost`.
  *
  * What this measures: the JavaScript the scene runs per frame, and the number
@@ -9,8 +9,7 @@
  */
 import { performance } from 'node:perf_hooks'
 import { createContourScene } from '../app/utils/backgrounds/contourScene'
-import { createGlyphScene } from '../app/utils/backgrounds/glyphScene'
-import type { BackgroundScene, SceneSize } from '../app/utils/backgrounds/scene'
+import type { SceneSize } from '../app/utils/backgrounds/scene'
 
 const VIEWPORTS: Array<{ label: string; size: SceneSize; fps: number }> = [
   {
@@ -25,17 +24,11 @@ const VIEWPORTS: Array<{ label: string; size: SceneSize; fps: number }> = [
   },
 ]
 
-const SCENES: Array<{ label: string; create: () => BackgroundScene }> = [
-  { label: 'contour', create: createContourScene },
-  { label: 'glyphs ', create: createGlyphScene },
-]
-
 function stubContext() {
   let lineTo = 0
-  let fillText = 0
   return {
     get drawCalls() {
-      return lineTo + fillText
+      return lineTo
     },
     clearRect: () => {},
     beginPath: () => {},
@@ -44,46 +37,36 @@ function stubContext() {
       lineTo += 1
     },
     stroke: () => {},
-    fillText: () => {
-      fillText += 1
-    },
-    font: '',
-    fillStyle: '',
     strokeStyle: '',
     lineWidth: 1,
     lineCap: 'butt' as CanvasLineCap,
-    textAlign: 'start' as CanvasTextAlign,
-    textBaseline: 'alphabetic' as CanvasTextBaseline,
-    globalAlpha: 1,
   }
 }
 
 const FRAMES = 600
 
-for (const { label, create } of SCENES) {
-  for (const viewport of VIEWPORTS) {
-    const scene = create()
-    scene.layout(viewport.size)
-    const ctx = stubContext() as unknown as CanvasRenderingContext2D & {
-      drawCalls: number
-    }
-    const step = 1000 / viewport.fps
-
-    // Warm the JIT before timing.
-    for (let i = 0; i < 60; i += 1) scene.draw(ctx, viewport.size, step)
-
-    const before = ctx.drawCalls
-    const started = performance.now()
-    for (let i = 0; i < FRAMES; i += 1) scene.draw(ctx, viewport.size, step)
-    const perFrame = (performance.now() - started) / FRAMES
-    const calls = (ctx.drawCalls - before) / FRAMES
-
-    const budget = (perFrame / step) * 100
-    console.log(
-      `${label}  ${viewport.label}  @${String(viewport.fps).padStart(2)}fps  ` +
-        `${perFrame.toFixed(3)} ms/frame  ` +
-        `${calls.toFixed(0).padStart(4)} draw calls  ` +
-        `${budget.toFixed(1)}% of the frame budget`,
-    )
+for (const viewport of VIEWPORTS) {
+  const scene = createContourScene()
+  scene.layout(viewport.size)
+  const ctx = stubContext() as unknown as CanvasRenderingContext2D & {
+    drawCalls: number
   }
+  const step = 1000 / viewport.fps
+
+  // Warm the JIT before timing.
+  for (let i = 0; i < 60; i += 1) scene.draw(ctx, viewport.size, step)
+
+  const before = ctx.drawCalls
+  const started = performance.now()
+  for (let i = 0; i < FRAMES; i += 1) scene.draw(ctx, viewport.size, step)
+  const perFrame = (performance.now() - started) / FRAMES
+  const calls = (ctx.drawCalls - before) / FRAMES
+
+  const budget = (perFrame / step) * 100
+  console.log(
+    `contour  ${viewport.label}  @${String(viewport.fps).padStart(2)}fps  ` +
+      `${perFrame.toFixed(3)} ms/frame  ` +
+      `${calls.toFixed(0).padStart(4)} draw calls  ` +
+      `${budget.toFixed(1)}% of the frame budget`,
+  )
 }

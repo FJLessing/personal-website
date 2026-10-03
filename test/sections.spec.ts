@@ -139,13 +139,16 @@ describe('site sections', () => {
     }
   })
 
-  it('Background is an empty, non-interactive layer behind the content', async () => {
+  it('Background is a textless, non-interactive layer behind the content', async () => {
     const wrapper = await mountSuspended(SiteBackground)
     const root = wrapper.get('[data-testid="site-background"]')
 
     expect(root.attributes('aria-hidden')).toBe('true')
     expect(root.classes()).toContain('pointer-events-none')
     expect(root.classes()).toContain('-z-10')
+    // Decoration only: a canvas, no text, nothing the keyboard can reach.
+    expect(root.find('canvas').exists()).toBe(true)
     expect(root.text()).toBe('')
+    expect(root.find('[tabindex]').exists()).toBe(false)
   })
 })

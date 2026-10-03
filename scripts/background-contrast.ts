@@ -1,5 +1,5 @@
 /**
- * Prints how visible each background's highlights are, and how much room they
+ * Prints how visible the background's highlights are, and how much room they
  * leave the text on top. Run with `npm run bg:contrast`.
  *
  * Two columns matter. "vs backdrop" is whether you can see the thing at all —
@@ -10,20 +10,10 @@
  */
 import {
   ACCENT,
-  ACCENT_HOT,
   ACCENT_TEXT,
-  ACCENT_WARM,
-  AURORA_ALPHA_ONE,
-  AURORA_ALPHA_THREE,
-  AURORA_ALPHA_TWO,
-  AURORA_GRAIN_ALPHA,
   BODY_TEXT,
   CONTOUR_ALPHA_HIGH,
   CONTOUR_ALPHA_LOW,
-  GLYPH_ALPHA_HOT,
-  GLYPH_ALPHA_PEAK,
-  GLYPH_STILL_ALPHA_HIGH,
-  GLYPH_STILL_ALPHA_LOW,
   MAX_HIGHLIGHT_LUMINANCE,
   MIN_VISIBLE_CONTRAST,
   PAGE_BASE,
@@ -33,31 +23,9 @@ import {
 } from '../app/utils/backgrounds/palette'
 import type { Rgb } from '../app/utils/backgrounds/palette'
 
-const WHITE: Rgb = [255, 255, 255]
-
 const rows: Array<{ label: string; colour: Rgb }> = [
   { label: 'contour  faintest isoline', colour: composite(ACCENT, CONTOUR_ALPHA_LOW) }, // prettier-ignore
   { label: 'contour  brightest isoline', colour: composite(ACCENT, CONTOUR_ALPHA_HIGH) }, // prettier-ignore
-  { label: 'glyphs   glyph at full power', colour: composite(ACCENT, GLYPH_ALPHA_PEAK) }, // prettier-ignore
-  { label: 'glyphs   glyph under the cursor', colour: composite(ACCENT_HOT, GLYPH_ALPHA_HOT) }, // prettier-ignore
-  { label: 'glyphs   still frame, dimmest', colour: composite(ACCENT, GLYPH_STILL_ALPHA_LOW) }, // prettier-ignore
-  { label: 'glyphs   still frame, brightest', colour: composite(ACCENT, GLYPH_STILL_ALPHA_HIGH) }, // prettier-ignore
-  { label: 'aurora   gradient one', colour: composite(ACCENT, AURORA_ALPHA_ONE) }, // prettier-ignore
-  { label: 'aurora   gradient two', colour: composite(ACCENT_WARM, AURORA_ALPHA_TWO) }, // prettier-ignore
-  { label: 'aurora   gradient three', colour: composite(ACCENT_HOT, AURORA_ALPHA_THREE) }, // prettier-ignore
-  { label: 'aurora   dot grid', colour: composite(WHITE, AURORA_GRAIN_ALPHA) }, // prettier-ignore
-  {
-    label: 'aurora   all three stacked',
-    colour: composite(
-      ACCENT_HOT,
-      AURORA_ALPHA_THREE,
-      composite(
-        ACCENT_WARM,
-        AURORA_ALPHA_TWO,
-        composite(ACCENT, AURORA_ALPHA_ONE),
-      ),
-    ),
-  },
 ]
 
 const pad = (text: string, width: number) => text.padEnd(width)
