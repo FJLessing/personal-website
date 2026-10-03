@@ -1,0 +1,16 @@
+# Cloudflare Pages project configuration.
+#
+# Checked in so the deploy settings live with the code instead of only in the
+# dashboard. Creating the Pages project, deploying and pointing DNS are separate,
+# approval-gated steps — see README.md.
+
+name = "personal-website"
+pages_build_output_dir = "dist"
+
+# Keep in step with the Nitro output; bump deliberately, not casually.
+compatibility_date = "2025-07-15"
+
+# Nitro's Cloudflare output uses Node built-ins (node:async_hooks and friends).
+# Without this flag the Worker fails at runtime and the build warns
+# "[cloudflare] Node.js compatibility is not enabled."
+compatibility_flags = ["nodejs_compat"]
