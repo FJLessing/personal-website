@@ -49,5 +49,10 @@
   },
   "overrides": {
     "simple-git": "4.0.2"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "fsevents": false,
+    "unrs-resolver": false
   }
 }

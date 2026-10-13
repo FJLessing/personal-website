@@ -402,13 +402,32 @@ Last reviewed 2026-10-13: full audit 12 high, 0 critical, 0 moderate, 0 low,
 all in the two accepted advisories; `npm audit --omit=dev` found 0. Revisit
 when `braces`, `node-forge` or `@nuxt/devtools` ship fixed versions.
 
-### Node floor
+### Node floor and install scripts
 
 `engines.node` is the intersection of every `engines.node` in
 `package-lock.json`, not a guess. Today `nopt` 10 and `abbrev` 5 (through
 `@vue/test-utils` → `js-beautify`) set it at `^22.22.2 || ^24.15.0 || >=26.0.0`.
 `test/engines.spec.ts` fails if a dependency bump raises the floor above what
 `package.json` declares, or if the lockfile root falls out of step with it.
+
+npm 11.16+ warns about any dependency with an install script that has no entry
+in the `allowScripts` field of `package.json` (manage it with
+`npm approve-scripts` and `npm deny-scripts`). Each one here is denied, because
+nothing needs it:
+
+| Package         | Script                        | What it does                                                                                                                                                                                    |
+| --------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `esbuild`       | `postinstall: install.js`     | Checks that the `@esbuild/<platform>` binary from `optionalDependencies` installed, and fetches it from the registry if not. On Linux and macOS it also swaps the JS `bin` shim for the binary. |
+| `unrs-resolver` | `postinstall: postinstall.js` | Same idea through `napi-postinstall`: checks the native binding from `optionalDependencies` and downloads it if missing. Used only by lint, through `eslint-plugin-import-x`.                   |
+| `fsevents`      | none in the tarball           | macOS only. npm infers `node-gyp rebuild` from the registry metadata, but the package ships a prebuilt `fsevents.node` and no `binding.gyp`, so there is nothing to build.                      |
+
+Both real scripts are fallbacks for a broken optional-dependency install, and
+the fallback is a network download at install time. With
+`npm ci --ignore-scripts` (plus `npx nuxt prepare` for the root's own
+`postinstall`) lint and build both pass. For now npm treats `false` as a
+record of the decision and still runs the scripts. A later npm will block
+them, and nothing here depends on them. `test/engines.spec.ts` also fails if a
+locked package with an install script has no `allowScripts` entry.
 
 ---
 

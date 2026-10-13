@@ -36,7 +36,7 @@ service or a paid tier.
 | Thing   | Version                                          | Why                                                                                                                                                                                  |
 | ------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Node    | **22.22.2+ or 24.15.0+** (25.x is not supported) | `package.json` `engines.node` is `^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0`, the floor of the locked tree. Below it `npm ci` prints `EBADENGINE`. CI builds on the latest 22 (`.nvmrc`). |
-| npm     | 10+                                              | Ships with Node. Needed only to build, not to run.                                                                                                                                   |
+| npm     | 10+                                              | Ships with Node. Needed only to build, not to run. npm 11.16+ reads the `allowScripts` field.                                                                                        |
 | Apache  | **2.4.10 or newer**                              | The vhost below uses `Header setifempty` (2.4.7+) and `Header … expr=` (2.4.10+). Debian 12 / Ubuntu 22.04+ ship 2.4.52+.                                                            |
 | certbot | any                                              | Free Let's Encrypt certificates. `apt install certbot python3-certbot-apache`.                                                                                                       |
 

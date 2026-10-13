@@ -8,10 +8,15 @@ import { describe, expect, it } from 'vitest'
 // EBADENGINE on any host below the new floor, and the build may or may not
 // still work there. This fails as soon as the declared range admits a Node
 // version that some locked package does not support.
+//
+// `allowScripts` records a decision for every locked package with an install
+// script, so npm 11.16+ prints no "not yet covered by allowScripts" warning.
+// See README, "Install scripts".
 
 type LockEntry = {
   version?: string
   engines?: { node?: string } | string[]
+  hasInstallScript?: boolean
 }
 
 // The `nuxt` test environment hands out an http `import.meta.url`, so resolve
@@ -24,6 +29,7 @@ const lockfile = read('package-lock.json') as {
 }
 const packageJson = read('package.json') as {
   engines: { node: string }
+  allowScripts?: Record<string, boolean>
 }
 
 const declared = packageJson.engines.node
@@ -54,5 +60,20 @@ describe('engines.node matches the locked tree', () => {
     // Raise engines.node in package.json and the lockfile root to the
     // intersection of these ranges.
     expect(tooWide).toEqual([])
+  })
+})
+
+describe('every install script has an allowScripts decision', () => {
+  const withScripts = dependencies
+    .filter(([, meta]) => meta.hasInstallScript)
+    .map(([path]) => name(path))
+
+  // Keys are a bare name or a pinned `name@range`; the name may be scoped.
+  const covered = Object.keys(packageJson.allowScripts ?? {}).map((key) =>
+    key.replace(/(?<=.)@.*$/, ''),
+  )
+
+  it('leaves no install script undecided', () => {
+    expect(withScripts.filter((pkg) => !covered.includes(pkg))).toEqual([])
   })
 })
