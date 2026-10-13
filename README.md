@@ -11,7 +11,8 @@ MUI, Radix/shadcn, chart, carousel or drag-and-drop packages came across.
 
 ## Requirements
 
-- Node 20.19+ (CI and the `.nvmrc` here use Node 22)
+- Node 22.22.2+ or 24.15.0+, not 25 (`engines.node` is
+  `^22.22.2 || ^24.15.0 || >=26.0.0`; CI and the `.nvmrc` here use Node 22)
 - npm 10+ (the npm 10 that Node 22 bundles installs this lockfile fine)
 
 ## Running it locally
@@ -400,6 +401,14 @@ token, and the worst case is a failed build on a throwaway runner.
 Last reviewed 2026-10-13: full audit 12 high, 0 critical, 0 moderate, 0 low,
 all in the two accepted advisories; `npm audit --omit=dev` found 0. Revisit
 when `braces`, `node-forge` or `@nuxt/devtools` ship fixed versions.
+
+### Node floor
+
+`engines.node` is the intersection of every `engines.node` in
+`package-lock.json`, not a guess. Today `nopt` 10 and `abbrev` 5 (through
+`@vue/test-utils` → `js-beautify`) set it at `^22.22.2 || ^24.15.0 || >=26.0.0`.
+`test/engines.spec.ts` fails if a dependency bump raises the floor above what
+`package.json` declares, or if the lockfile root falls out of step with it.
 
 ---
 
