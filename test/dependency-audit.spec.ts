@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { checkAudit } from '../scripts/audit-gate-check.mjs'
 
 // The full `npm audit` carries accepted advisories against `braces` and
 // `node-forge` (see README, "Dependency audit"). The acceptance rests on one
@@ -73,5 +74,107 @@ describe('the simple-git override stays safe', () => {
     for (const [path, meta] of entriesFor('simple-git')) {
       expect(meta.dev, `${path} is no longer dev-only`).toBe(true)
     }
+  })
+})
+
+// `scripts/audit-gate.mjs` accepts the two advisories only while their package
+// has no fixed release. The registry lookup is injected, so these run offline;
+// the live gate runs in CI as `npm run audit:gate`.
+describe('the audit gate', () => {
+  const leaf = (pkg: string, id: string, range: string) => ({
+    via: [
+      {
+        name: pkg,
+        title: `${pkg} advisory`,
+        url: `https://github.com/advisories/${id}`,
+        severity: 'high',
+        range,
+      },
+    ],
+  })
+
+  // The shape of `npm audit --json --include=dev` at edba1c6, trimmed to what
+  // the gate reads.
+  const report = (extra: Record<string, object> = {}) => ({
+    metadata: { vulnerabilities: { total: 12 } },
+    vulnerabilities: {
+      braces: leaf('braces', 'GHSA-vfj7-8cjw-p6xm', '<=3.0.3'),
+      micromatch: { via: ['braces'] },
+      'node-forge': leaf('node-forge', 'GHSA-86w9-cpqp-85rv', '<=1.4.0'),
+      ...extra,
+    },
+  })
+
+  const registry =
+    (latest: Record<string, string>) =>
+    (pkg: string): string => {
+      if (!(pkg in latest)) throw new Error(`no stub for ${pkg}`)
+      return latest[pkg]!
+    }
+
+  const today = registry({ braces: '3.0.3', 'node-forge': '1.4.0' })
+
+  it('passes the accepted advisories while no fix exists', () => {
+    const result = checkAudit(report(), { latestVersion: today })
+
+    expect(result.ok).toBe(true)
+    expect(result.warnings).toEqual([])
+  })
+
+  it('fails once an accepted package ships a fixed release', () => {
+    const result = checkAudit(report(), {
+      latestVersion: registry({ braces: '3.0.4', 'node-forge': '1.4.0' }),
+    })
+
+    expect(result.ok).toBe(false)
+    const message = result.errors.join('\n')
+    expect(message).toContain('braces GHSA-vfj7-8cjw-p6xm')
+    expect(message).toContain('Move braces to 3.0.4')
+    expect(message).not.toContain('node-forge')
+  })
+
+  it('warns and passes when the registry lookup fails', () => {
+    const result = checkAudit(report(), {
+      latestVersion: registry({ braces: '3.0.3' }),
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.warnings.join('\n')).toMatch(
+      /Could not look up the latest node-forge/,
+    )
+  })
+
+  it('fails on an advisory that is not accepted', () => {
+    const result = checkAudit(
+      report({ 'left-pad': leaf('left-pad', 'GHSA-xxxx-xxxx-xxxx', '<2.0.0') }),
+      { latestVersion: today },
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.errors.join('\n')).toContain('left-pad GHSA-xxxx-xxxx-xxxx')
+  })
+
+  it('does not accept an accepted ID reported against another package', () => {
+    const result = checkAudit(
+      report({ picomatch: leaf('picomatch', 'GHSA-vfj7-8cjw-p6xm', '<=9') }),
+      { latestVersion: today },
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.errors.join('\n')).toContain('picomatch GHSA-vfj7-8cjw-p6xm')
+  })
+
+  it('warns when an accepted advisory is no longer reported', () => {
+    const { vulnerabilities, metadata } = report()
+    const { braces: _, micromatch: __, ...rest } = vulnerabilities
+    const result = checkAudit(
+      { metadata, vulnerabilities: rest },
+      { latestVersion: today },
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.warnings).toEqual([
+      'Accepted advisory GHSA-vfj7-8cjw-p6xm is no longer reported. Drop it.',
+    ])
   })
 })

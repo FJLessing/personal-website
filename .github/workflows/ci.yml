@@ -42,7 +42,8 @@ jobs:
 
       # The dev/build tree carries two advisories with no upstream fix (see
       # README, "Dependency audit"). The gate accepts exactly those and fails
-      # on any other, so a new advisory turns the build red.
+      # on any other, so a new advisory turns the build red. It also fails once
+      # either package ships a release outside the vulnerable range.
       - name: Audit build tooling
         run: npm run audit:gate
 

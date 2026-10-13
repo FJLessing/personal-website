@@ -397,6 +397,15 @@ stands. CI runs `npm run audit:gate` (`scripts/audit-gate.mjs`) on every push.
 It accepts exactly the two advisories above and fails on any other, so a new
 advisory turns the build red instead of scrolling past.
 
+The acceptance lasts only while there is no fix. On every run the gate asks the
+registry for the `latest` release of `braces` and `node-forge` and checks it
+against the vulnerable range in the advisory. Once one falls outside that
+range, the gate fails and names the version to move to, so the "none yet"
+column above cannot go stale unnoticed. If the registry lookup itself fails,
+the gate warns and passes rather than turn a network blip into a red build.
+It ignores npm's `fixAvailable`, which reports a fix for both today when
+neither package has one.
+
 Residual risk: a pull request can still make CI's own `npm run build` spend
 effort on a hostile glob pattern. The job is `contents: read`, carries no write
 token, and the worst case is a failed build on a throwaway runner.

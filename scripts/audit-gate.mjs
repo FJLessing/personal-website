@@ -1,25 +1,21 @@
-// Fail on any `npm audit` advisory that is not on the accepted list.
+// Fail on any `npm audit` advisory that is not on the accepted list, and on
+// any accepted one whose package has since shipped a fix.
 //
 //   npm run audit:gate
 //
 // The full audit cannot reach zero while `braces` and `node-forge` have no
 // fixed release (see README, "Dependency audit"), so a plain
 // `npm audit --audit-level=low` would be red for good and nobody would read
-// it. This keeps the gate honest instead: the two accepted advisories pass,
-// anything new fails the build.
+// it. This keeps the gate honest instead: the two accepted advisories pass
+// while the registry has nothing newer than the vulnerable range, and anything
+// new fails the build. The rules live in `audit-gate-check.mjs`.
 //
 // `--include=dev` is explicit because `NODE_ENV=production` makes npm omit dev
 // dependencies by default, which turns a "full" audit into `--omit=dev`
 // without saying so.
 
 import { spawnSync } from 'node:child_process'
-
-// Advisory ID -> the package it is accepted for. Remove an entry once the
-// advisory stops being reported; the gate warns when one goes stale.
-const ACCEPTED = new Map([
-  ['GHSA-vfj7-8cjw-p6xm', 'braces'],
-  ['GHSA-86w9-cpqp-85rv', 'node-forge'],
-])
+import { checkAudit } from './audit-gate-check.mjs'
 
 const run = spawnSync('npm', ['audit', '--json', '--include=dev'], {
   encoding: 'utf8',
@@ -39,37 +35,24 @@ if (report.error || !report.metadata) {
   process.exit(1)
 }
 
-// Only the leaf advisories carry an ID; parents just list the package they
-// depend on, and are covered once their leaf is accounted for.
-const found = new Map()
-for (const [pkg, vuln] of Object.entries(report.vulnerabilities)) {
-  for (const via of vuln.via) {
-    if (typeof via !== 'object') continue
-    const id = via.url.split('/').pop()
-    found.set(`${id} ${pkg}`, { id, pkg, via })
+// `npm view` goes through the same registry and proxy config as `npm audit`.
+function latestVersion(pkg) {
+  const view = spawnSync('npm', ['view', pkg, 'version'], {
+    encoding: 'utf8',
+    timeout: 30_000,
+  })
+  if (view.error) throw view.error
+  if (view.status !== 0) {
+    throw new Error(view.stderr.trim() || `npm view exited ${view.status}`)
   }
+  return view.stdout.trim()
 }
 
-const unexpected = [...found.values()].filter(
-  ({ id, pkg }) => ACCEPTED.get(id) !== pkg,
-)
-const seen = new Set([...found.values()].map(({ id }) => id))
-const stale = [...ACCEPTED.keys()].filter((id) => !seen.has(id))
+const { ok, log, warnings, errors } = checkAudit(report, { latestVersion })
 
-const { total } = report.metadata.vulnerabilities
-console.log(
-  `npm audit: ${total} affected packages, ${found.size} advisories, ` +
-    `${found.size - unexpected.length} accepted.`,
-)
-
-for (const id of stale) {
-  console.warn(`Accepted advisory ${id} is no longer reported. Drop it.`)
-}
-
-if (unexpected.length) {
-  console.error('\nAdvisories that are not accepted:')
-  for (const { id, pkg, via } of unexpected) {
-    console.error(`  ${via.severity.padEnd(8)} ${pkg} ${id} ${via.title}`)
-  }
+for (const line of log) console.log(line)
+for (const line of warnings) console.warn(line)
+if (!ok) {
+  console.error('\n' + errors.join('\n'))
   process.exit(1)
 }
