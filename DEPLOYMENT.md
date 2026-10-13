@@ -33,17 +33,18 @@ service or a paid tier.
 
 ### On the server
 
-| Thing   | Version                                          | Why                                                                                                                                                                                  |
-| ------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Node    | **22.22.2+ or 24.15.0+** (25.x is not supported) | `package.json` `engines.node` is `^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0`, the floor of the locked tree. Below it `npm ci` prints `EBADENGINE`. CI builds on the latest 22 (`.nvmrc`). |
-| npm     | 10+                                              | Ships with Node. Needed only to build, not to run. npm 11.16+ reads the `allowScripts` field.                                                                                        |
-| Apache  | **2.4.10 or newer**                              | The vhost below uses `Header setifempty` (2.4.7+) and `Header … expr=` (2.4.10+). Debian 12 / Ubuntu 22.04+ ship 2.4.52+.                                                            |
-| certbot | any                                              | Free Let's Encrypt certificates. `apt install certbot python3-certbot-apache`.                                                                                                       |
+| Thing   | Version                  | Why                                                                                                                                                                                              |
+| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node    | **24.x, 24.15 or newer** | Production and CI (`.nvmrc`) run Node 24. 24.15.0 is the floor of the locked tree for Node 24 (`engines.node` is `^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0`); below it `npm ci` prints `EBADENGINE`. |
+| npm     | 11                       | Ships with Node 24. Needed only to build, not to run. The lockfile is maintained with npm 11, which also reads the `allowScripts` field.                                                         |
+| Apache  | **2.4.10 or newer**      | The vhost below uses `Header setifempty` (2.4.7+) and `Header … expr=` (2.4.10+). Debian 12 / Ubuntu 22.04+ ship 2.4.52+.                                                                        |
+| certbot | any                      | Free Let's Encrypt certificates. `apt install certbot python3-certbot-apache`.                                                                                                                   |
 
 Check what you have:
 
 ```bash
-node -v          # expect v22.22.2+ or v24.15.0+
+node -v          # expect v24.15.0 or newer
+npm -v           # expect 11.x
 apachectl -v     # expect Server version: Apache/2.4.x
 ```
 
@@ -54,8 +55,8 @@ there is no reason to run a second, older Node for the service.
 ### Upgrading Node on the server
 
 `npm ci` printing `EBADENGINE` for `abbrev`, `nopt` or `jsdoc-type-pratt-parser`
-means Node is below the floor (24.13.0 is below it). Stay on your major and take its
-latest release:
+means Node is below the floor (24.13.0 is below it). Take the latest Node 24
+release:
 
 ```bash
 command -v node            # /usr/bin/node: NodeSource. Under ~/.nvm: nvm.
@@ -63,10 +64,11 @@ command -v node            # /usr/bin/node: NodeSource. Under ~/.nvm: nvm.
 # NodeSource
 sudo apt-get update && sudo apt-get install --only-upgrade nodejs
 
-# nvm (use 22 instead of 24 to stay on Node 22)
+# nvm
 nvm install 24 && nvm alias default 24
 
-node -v                    # v24.15.0 or newer (or v22.22.2 or newer)
+node -v                    # v24.15.0 or newer
+npm -v                     # 11.x
 ```
 
 Then rebuild from a clean install (`rm -rf node_modules && npm ci && npm run

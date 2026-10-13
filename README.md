@@ -11,9 +11,11 @@ MUI, Radix/shadcn, chart, carousel or drag-and-drop packages came across.
 
 ## Requirements
 
-- Node 22.22.2+ or 24.15.0+, not 25 (`engines.node` is
-  `^22.22.2 || ^24.15.0 || >=26.0.0`; CI and the `.nvmrc` here use Node 22)
-- npm 10+ (the npm 10 that Node 22 bundles installs this lockfile fine)
+- Node 24.x, 24.15 or newer. Production, CI and the `.nvmrc` here all use
+  Node 24. (`engines.node` is the wider `^22.22.2 || ^24.15.0 || >=26.0.0`,
+  the floor of the locked tree; see "Node floor and install scripts" below.
+  Node 22 is not tested.)
+- npm 11, the one Node 24 bundles. The lockfile is maintained with it.
 
 ## Running it locally
 
@@ -363,9 +365,10 @@ everything that reaches a browser or the Node server.
 A full `npm audit` reports 12 high-severity advisories, all of them in Nuxt's
 own build-time tree and all tracing to two packages. Both are **accepted**, not
 outstanding: there is no fixed release to move to (`braces` 3.0.3 and
-`node-forge` 1.4.0 are the latest), and npm's suggested remedy is a downgrade to
-Nuxt 3, which is not an option. Nuxt 4.6 does not help either: it still builds
-on `nitropack` 2.13.4, which pulls both in.
+`node-forge` 1.4.0 are the latest), and `npm audit fix --force` does not clear
+these two advisories. Nuxt 4.6 does not help either: it still builds on
+`nitropack` 2.13.4, which pulls both in. FJ accepted both advisories on
+2026-10-13, until upstream ships a fix.
 
 Run the full audit with `npm audit --include=dev`, or `npm run audit:gate`. If
 `NODE_ENV=production` is set, as it is in some containers, a bare `npm audit`
@@ -400,7 +403,11 @@ token, and the worst case is a failed build on a throwaway runner.
 
 Last reviewed 2026-10-13: full audit 12 high, 0 critical, 0 moderate, 0 low,
 all in the two accepted advisories; `npm audit --omit=dev` found 0. Revisit
-when `braces`, `node-forge` or `@nuxt/devtools` ship fixed versions.
+the acceptance as soon as `braces` or `node-forge` ships a fixed version, or
+`nitropack` / `@nuxt/cli` drops them, whichever comes first, and in any case on
+every Nuxt minor upgrade. Drop the `simple-git` override when `@nuxt/devtools`
+ships a release on `simple-git` 4. `audit:gate` fails on anything new in the
+meantime.
 
 ### Node floor and install scripts
 
@@ -409,6 +416,14 @@ when `braces`, `node-forge` or `@nuxt/devtools` ship fixed versions.
 `@vue/test-utils` → `js-beautify`) set it at `^22.22.2 || ^24.15.0 || >=26.0.0`.
 `test/engines.spec.ts` fails if a dependency bump raises the floor above what
 `package.json` declares, or if the lockfile root falls out of step with it.
+The range is deliberately not narrowed to Node 24: it states what the locked
+tree supports, and the "which Node to run" decision lives in `.nvmrc`, CI and
+`DEPLOYMENT.md` (Node 24.15+).
+
+The lockfile is maintained with npm 11 on Node 24, and CI runs `npm ci` there.
+Install or update dependencies with that pair. npm 10 is stricter about
+optional peer entries that npm 11 prunes, so a lockfile written by npm 11 is
+not guaranteed to install on Node 22 / npm 10, and nothing checks that it does.
 
 npm 11.16+ warns about any dependency with an install script that has no entry
 in the `allowScripts` field of `package.json` (manage it with
