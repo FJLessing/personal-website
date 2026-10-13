@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, h } from 'vue'
+import { createClientOnly } from '#app/components/client-only'
 import { useBackgroundCanvas } from '~/composables/useBackgroundCanvas'
 import type { BackgroundScene, SceneSize } from '~/utils/backgrounds/scene'
 
@@ -166,19 +167,20 @@ type Harness = ReturnType<typeof createHarness>
 const DESKTOP: Viewport = { width: 1440, height: 900, devicePixelRatio: 3 }
 const PHONE: Viewport = { width: 360, height: 740, devicePixelRatio: 3 }
 
-/** Mounts a component that does nothing but run the composable. */
+/** A component that does nothing but run the composable. */
+const canvasComponent = (scene: BackgroundScene) =>
+  defineComponent({
+    setup() {
+      const { canvas } = useBackgroundCanvas(() => scene, {
+        fps: 24,
+        smallFps: 15,
+      })
+      return () => h('canvas', { ref: canvas })
+    },
+  })
+
 function mountCanvas(scene: BackgroundScene) {
-  return mountSuspended(
-    defineComponent({
-      setup() {
-        const { canvas } = useBackgroundCanvas(() => scene, {
-          fps: 24,
-          smallFps: 15,
-        })
-        return () => h('canvas', { ref: canvas })
-      },
-    }),
-  )
+  return mountSuspended(canvasComponent(scene))
 }
 
 afterEach(() => {
@@ -265,6 +267,34 @@ describe('background canvas runtime', () => {
       wrapper.unmount()
       harness.tick(200)
       expect(harness.frames()).toBe(before)
+    })
+  })
+
+  describe('behind a .client boundary', () => {
+    beforeEach(() => {
+      harness = createHarness(DESKTOP)
+    })
+
+    // `SiteBackground.client.vue` is wrapped by Nuxt's `createClientOnly`.
+    // While the page hydrates, which is every real page load, its first
+    // mount renders a placeholder and fires `onMounted` before the canvas
+    // exists. A runtime that started from `onMounted` saw no canvas, bailed,
+    // and the live site shipped a background that never drew a pixel, with
+    // no error anywhere. Mounting the bare component, or mounting the wrapper
+    // outside hydration, renders the canvas on the first pass and cannot see
+    // that.
+    it('starts once the wrapper renders the real canvas', async () => {
+      const nuxtApp = useNuxtApp()
+      nuxtApp.isHydrating = true
+      try {
+        await mountSuspended(createClientOnly(canvasComponent(harness.scene)))
+      } finally {
+        nuxtApp.isHydrating = false
+      }
+
+      expect(harness.layout()).not.toBeNull()
+      harness.tick(100)
+      expect(harness.frames()).toBe(1)
     })
   })
 

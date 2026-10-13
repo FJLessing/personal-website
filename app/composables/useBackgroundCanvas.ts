@@ -17,9 +17,10 @@ export interface BackgroundCanvasOptions {
  * Runs a {@link BackgroundScene} on a canvas, and owns every rule the
  * background has to obey:
  *
- *   - everything browser-side happens in `onMounted`, so nothing here runs on
- *     the server even if the component is ever rendered outside a `.client`
- *     boundary;
+ *   - everything browser-side starts when the `<canvas>` element exists, so
+ *     nothing here runs on the server even if the component is ever rendered
+ *     outside a `.client` boundary (see `start` below for why that is not
+ *     simply `onMounted`);
  *   - `prefers-reduced-motion: reduce` draws one still frame and never starts
  *     the loop, and the media query is watched so toggling it takes effect;
  *   - the loop stops when the tab is hidden and when the canvas leaves the
@@ -45,10 +46,10 @@ export function useBackgroundCanvas(
 
   const canvas = ref<HTMLCanvasElement | null>(null)
 
-  onMounted(() => {
-    const el = canvas.value
-    const ctx = el?.getContext('2d')
-    if (!el || !ctx) return
+  /** Runs the scene on `el` and returns the teardown. */
+  const start = (el: HTMLCanvasElement): (() => void) => {
+    const ctx = el.getContext('2d')
+    if (!ctx) return () => {}
 
     const scene = createScene()
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -159,7 +160,7 @@ export function useBackgroundCanvas(
     measure()
     sync()
 
-    onBeforeUnmount(() => {
+    return () => {
       stop()
       resizeObserver.disconnect()
       intersectionObserver.disconnect()
@@ -170,8 +171,26 @@ export function useBackgroundCanvas(
         document.removeEventListener('pointerleave', clearPointer)
         window.removeEventListener('blur', clearPointer)
       }
-    })
-  })
+    }
+  }
+
+  /**
+   * Starts on the canvas element, not on `onMounted`. A `.client` component
+   * is wrapped by Nuxt's `createClientOnly`, which mounts it twice over: the
+   * first pass renders an empty placeholder and fires the component's
+   * `onMounted`, and only the re-render after that produces the real
+   * template. An `onMounted` here sees no canvas, bails, and never retries,
+   * so the background silently never draws. Watching the ref starts the
+   * runtime whenever the element actually exists, however the component is
+   * mounted. Non-immediate watchers never run during SSR.
+   */
+  watch(
+    canvas,
+    (el, _previous, onCleanup) => {
+      if (el) onCleanup(start(el))
+    },
+    { flush: 'post' },
+  )
 
   return { canvas }
 }
