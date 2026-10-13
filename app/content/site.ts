@@ -219,7 +219,7 @@ export interface ErrorContent {
 export const SITE_META: SiteMeta = {
   title: 'FJ Lessing - Head of Development at BRAVE Digital',
   description:
-    'FJ Lessing, Head of Development at BRAVE Digital. Leads a developer team, designs how agentic workflows fit that work, and builds full-stack and cloud software.',
+    'FJ Lessing, Head of Development at BRAVE Digital. I leads a team of talented developers, design how agentic workflows fit that work, and build full-stack and cloud software.',
   keywords:
     'FJ Lessing, Head of Development, Agentic Development, AI Agents, AI Integration, Context Engineering, Full-Stack Developer, React, Vue, Laravel, Flutter, AWS, DevOps, Software Engineer, BRAVE Digital',
   author: 'FJ Lessing',
@@ -317,9 +317,9 @@ export const HERO: HeroContent = {
 export const ABOUT: AboutContent = {
   heading: { lead: 'About ', accent: 'Me' },
   paragraphs: [
-    'As Head of Development at BRAVE Digital I lead a team of developers delivering software for a diverse client base. I scope and architect projects, guide technical strategy, look after developer growth and wellbeing, and make sure we ship quality work on time and on budget.',
+    'As Head of Development at BRAVE Digital I lead a team of talented developers delivering software for a diverse client base. I scope and architect projects, guide technical strategy, look after developer growth and wellbeing, and make sure we ship quality work on time and on budget.',
     'A growing part of that job is managing agents as well as developers: deciding where an agent is given work, how it is given context, how far it is trusted to act on its own, and how its output is reviewed before it reaches a client. I build these workflows with Claude, Gemini and OpenCode, prove them out on personal projects in my homelab, and bring into the team only what holds up. So far they have paid off most in AI-driven data manipulation and porting, AI-assisted test development, and scoping and documentation.',
-    'All of that sits on full-stack experience with Laravel, Node.js, Vue and React, mobile apps with Flutter, React Native and Swift, and DevOps across web servers, cloud infrastructure and deployment.',
+    'All of that sits on full-stack experience with TypeScript, Laravel, Node.js, Vue and React, mobile apps with Flutter, React Native and Swift, and DevOps across web servers, cloud infrastructure and deployment.',
   ],
   asides: [
     {
@@ -359,7 +359,7 @@ export const EXPERIENCE: ExperienceContent = {
       tech: [
         'AI Agents',
         'Claude',
-        'OpenCode',
+        'TypeScript',
         'Laravel',
         'Node.js',
         'Vue',
@@ -394,8 +394,8 @@ export const EXPERIENCE: ExperienceContent = {
         'Independent work for clients across industries, increasingly AI-led. I review AI-generated code and software for correctness. On the last two platforms I also built a review harness into the codebase using AGENTS.md and Skills, so every pass starts with the context it needs. I have shipped two sites built end to end with AI: an event signup site with galleries, RSVP and user-facing uploads, and a site for a bed and breakfast.',
       tech: [
         'AI Code Review',
-        'Agentic Delivery',
-        'AGENTS.md',
+        'Agentic Development',
+        'Agent Skills Developement',
         'Web Development',
         'Consulting',
         'Full-Stack',
@@ -412,12 +412,9 @@ export const SKILLS: SkillsContent = {
       skills: [
         'Agentic Development',
         'Agent Design & Orchestration',
-        'Context Engineering',
-        'Prompt Engineering',
+        'Spec-driven Engineering',
         'Claude Code',
         'OpenCode',
-        'Gemini',
-        'AntiGravity',
         'MCP',
         'Anthropic API',
         'OpenAI API',
@@ -482,6 +479,7 @@ export const SKILLS: SkillsContent = {
         'PostgreSQL',
         'Apache',
         'Nginx',
+        'GitHub CI/CD',
         'Bitbucket Pipelines',
       ],
     },
