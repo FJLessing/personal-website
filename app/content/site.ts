@@ -227,7 +227,7 @@ export interface ErrorContent {
 export const SITE_META: SiteMeta = {
   title: 'FJ Lessing - Head of Development at BRAVE Digital',
   description:
-    'FJ Lessing, Head of Development at BRAVE Digital. I leads a team of talented developers, design how agentic workflows fit that work, and build full-stack and cloud software.',
+    'FJ Lessing, Head of Development at BRAVE Digital. I lead a team of talented developers, design how agentic workflows fit that work, and build full-stack and cloud software.',
   keywords:
     'FJ Lessing, Head of Development, Agentic Development, AI Agents, AI Integration, Context Engineering, Full-Stack Developer, React, Vue, Laravel, Flutter, AWS, DevOps, Software Engineer, BRAVE Digital',
   author: 'FJ Lessing',
@@ -408,7 +408,7 @@ export const EXPERIENCE: ExperienceContent = {
       tech: [
         'AI Code Review',
         'Agentic Development',
-        'Agent Skills Developement',
+        'Agent Skills Development',
         'Web Development',
         'Consulting',
         'Full-Stack',
