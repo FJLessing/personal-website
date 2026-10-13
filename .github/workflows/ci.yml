@@ -40,12 +40,11 @@ jobs:
       - name: Audit shipped dependencies
         run: npm audit --omit=dev --audit-level=low
 
-      # The dev/build tree currently carries advisories that have no upstream
-      # fix (see README, "Dependency audit"). Reported, not gated, so a new one
-      # is visible without a red build for something we cannot act on.
-      - name: Audit build tooling (informational)
-        run: npm audit --audit-level=low
-        continue-on-error: true
+      # The dev/build tree carries two advisories with no upstream fix (see
+      # README, "Dependency audit"). The gate accepts exactly those and fails
+      # on any other, so a new advisory turns the build red.
+      - name: Audit build tooling
+        run: npm run audit:gate
 
       - name: Lint
         run: npm run lint

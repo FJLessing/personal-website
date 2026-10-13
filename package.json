@@ -26,7 +26,8 @@
     "browser:install": "scripts/install-headless-browser.sh",
     "screenshot": "node scripts/screenshot.mjs",
     "cv:build": "node scripts/build-cv.mjs",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "audit:gate": "node scripts/audit-gate.mjs"
   },
   "devDependencies": {
     "@nuxt/eslint": "1.17.0",

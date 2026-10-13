@@ -361,28 +361,45 @@ everything that reaches a browser or the Node server.
 
 A full `npm audit` reports 12 high-severity advisories, all of them in Nuxt's
 own build-time tree and all tracing to two packages. Both are **accepted**, not
-outstanding: there is no fixed release to move to, and npm's suggested remedy is
-a downgrade to `nuxt@3.15.1`, which is not an option.
+outstanding: there is no fixed release to move to (`braces` 3.0.3 and
+`node-forge` 1.4.0 are the latest), and npm's suggested remedy is a downgrade to
+Nuxt 3, which is not an option. Nuxt 4.6 does not help either: it still builds
+on `nitropack` 2.13.4, which pulls both in.
 
-| Advisory                                                                 | Package                | Installed      | Fixed in | Why it is accepted                                                                                                                                                                                                                                          |
-| ------------------------------------------------------------------------ | ---------------------- | -------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | `braces` (CWE-674)     | 3.0.3 (latest) | none yet | Stack exhaustion on a deeply nested glob pattern. Reached only through `micromatch` → `fast-glob` → `globby` → `nitropack` at build time, over patterns that come from our own config, never from a request.                                                |
-| [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv) | `node-forge` (CWE-347) | 1.4.0 (latest) | none yet | Lax PKCS#1 v1.5 signature verification. Reached only through `listhen` → `@nuxt/cli`, which uses `node-forge` to _mint_ a self-signed certificate for `nuxt dev --https`. We verify no signatures with it, and it never runs outside a developer's machine. |
+Run the full audit with `npm audit --include=dev`, or `npm run audit:gate`. If
+`NODE_ENV=production` is set, as it is in some containers, a bare `npm audit`
+silently omits dev dependencies and reports 0. That is how the `simple-git`
+advisories below went unnoticed until `npm ci` on a laptop listed 15.
+
+| Advisory                                                                 | Package                | Installed      | Fixed in | Why it is accepted                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------ | ---------------------- | -------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | `braces` (CWE-674)     | 3.0.3 (latest) | none yet | Stack exhaustion on a deeply nested glob pattern. Reached only through `micromatch` → `fast-glob` → `globby` → `nitropack` at build time, over patterns that come from our own config, never from a request.                                                               |
+| [GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv) | `node-forge` (CWE-347) | 1.4.0 (latest) | none yet | Lax PKCS#1 v1.5 signature verification. Reached only through `listhen` → `@nuxt/cli` and `nitropack`, which use `node-forge` to _mint_ a self-signed certificate for `nuxt dev --https`. We verify no signatures with it, and it never runs outside a developer's machine. |
+
+`simple-git` is **fixed** by an override, not accepted. `@nuxt/devtools` 3.x
+depends on `simple-git` 3.x, which carries four advisories (two critical) fixed
+only in 4.0.1 and later, so `package.json` overrides it to 4.0.2. Version 4
+removed the default export that devtools imports, which is safe only because
+`nuxt.config.ts` sets `devtools: { enabled: false }`. Nuxt then never loads the
+devtools module. Turn devtools on and `nuxt dev` fails to start. Drop the
+override first, once devtools ships a release on `simple-git` 4.
 
 The acceptance rests on one premise: both packages are dev/build-only, so
 nothing they touch reaches a browser or the Node server.
 `test/dependency-audit.spec.ts` pins that premise — it fails if the repo gains a
 runtime `dependency` or if either package stops resolving as `dev` in
-`package-lock.json`. CI also reports the full audit on every run without failing
-on it, so a genuinely new advisory is still visible.
+`package-lock.json`, and if devtools is enabled while the `simple-git` override
+stands. CI runs `npm run audit:gate` (`scripts/audit-gate.mjs`) on every push.
+It accepts exactly the two advisories above and fails on any other, so a new
+advisory turns the build red instead of scrolling past.
 
 Residual risk: a pull request can still make CI's own `npm run build` spend
 effort on a hostile glob pattern. The job is `contents: read`, carries no write
 token, and the worst case is a failed build on a throwaway runner.
 
-Last reviewed 2026-10-04 against commit `792a163`: 12 high, 0 critical, 0
-moderate, 0 low; `npm audit --omit=dev` found 0. Revisit when Nuxt picks up
-fixed versions upstream.
+Last reviewed 2026-10-13: full audit 12 high, 0 critical, 0 moderate, 0 low,
+all in the two accepted advisories; `npm audit --omit=dev` found 0. Revisit
+when `braces`, `node-forge` or `@nuxt/devtools` ship fixed versions.
 
 ---
 
