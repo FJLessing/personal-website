@@ -58,6 +58,10 @@ describe('site sections', () => {
     expect(text).toContain(HERO.name)
     expect(text).toContain(HERO.tagline)
     expect(text).toContain(HERO.ctaLabel)
+    expect(text).toContain(HERO.cv.label)
+    const cv = wrapper.get('a[download]')
+    expect(cv.attributes('href')).toBe('/fj-lessing-cv.pdf')
+    expect(cv.attributes('download')).toBe(HERO.cv.fileName)
     expect(wrapper.get('img').attributes('alt')).toBe(HERO.portraitAlt)
     // Literal paths, not HERO.portrait.*: the test must fail if the content
     // module points the hero back at the full-size /profile.png.

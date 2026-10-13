@@ -2,9 +2,9 @@
 import type { IconName } from '~/content/site'
 
 /**
- * The eight icons the site actually uses, inlined.
+ * The nine icons the site actually uses, inlined.
  *
- * The reference repo pulled these from `lucide-react`. Eight sets of SVG
+ * The reference repo pulled these from `lucide-react`. Nine sets of SVG
  * geometry are not worth an icon dependency, so they live here. The paths come
  * from Lucide (ISC licence) and keep Lucide's 24x24 / stroke-width-2
  * conventions. Written as real SVG elements rather than `v-html` so nothing on
@@ -87,6 +87,12 @@ withDefaults(
       <path
         d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"
       />
+    </template>
+
+    <template v-else-if="name === 'download'">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" x2="12" y1="15" y2="3" />
     </template>
   </svg>
 </template>

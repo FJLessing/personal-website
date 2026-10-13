@@ -28,14 +28,15 @@ staying inside 3101-3105.
 
 Other scripts:
 
-| Script              | What it does                                               |
-| ------------------- | ---------------------------------------------------------- |
-| `npm run build`     | Production build, a Node SSR server in `.output/`          |
-| `npm run preview`   | Serves the last build (`.output/server/index.mjs`)         |
-| `npm run lint`      | ESLint                                                     |
-| `npm run format`    | Prettier, writing in place (`format:check` to verify only) |
-| `npm run typecheck` | `vue-tsc` in strict mode, via `nuxt typecheck`             |
-| `npm run test`      | Vitest                                                     |
+| Script              | What it does                                                                   |
+| ------------------- | ------------------------------------------------------------------------------ |
+| `npm run build`     | Production build, a Node SSR server in `.output/`                              |
+| `npm run preview`   | Serves the last build (`.output/server/index.mjs`)                             |
+| `npm run lint`      | ESLint                                                                         |
+| `npm run format`    | Prettier, writing in place (`format:check` to verify only)                     |
+| `npm run typecheck` | `vue-tsc` in strict mode, via `nuxt typecheck`                                 |
+| `npm run test`      | Vitest                                                                         |
+| `npm run cv:build`  | Prints `cv/cv.html` to `public/fj-lessing-cv.pdf` (needs the headless browser) |
 
 To check the server-rendered HTML the way a crawler sees it:
 

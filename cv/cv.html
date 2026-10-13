@@ -1,0 +1,595 @@
+<!doctype html>
+<!--
+  Source for public/fj-lessing-cv.pdf. Rebuild with `npm run cv:build`.
+
+  Laid out on a 924 x 1308 px canvas per page, the size the original Figma
+  export rendered at. The build prints it to A4 at the matching scale.
+  Keep the wording in step with app/content/site.ts.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FJ Lessing - CV</title>
+    <style>
+      @font-face {
+        font-family: 'IBM Plex Mono';
+        font-weight: 300;
+        src: url('fonts/ibm-plex-mono-300-latin.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'IBM Plex Mono';
+        font-weight: 400;
+        src: url('../public/fonts/ibm-plex-mono-400-latin.woff2')
+          format('woff2');
+      }
+      @font-face {
+        font-family: 'IBM Plex Mono';
+        font-weight: 500;
+        src: url('../public/fonts/ibm-plex-mono-500-latin.woff2')
+          format('woff2');
+      }
+      @font-face {
+        font-family: 'IBM Plex Mono';
+        font-weight: 700;
+        src: url('../public/fonts/ibm-plex-mono-700-latin.woff2')
+          format('woff2');
+      }
+      @font-face {
+        font-family: 'IBM Plex Sans';
+        font-weight: 400 700;
+        src: url('../public/fonts/ibm-plex-sans-latin.woff2') format('woff2');
+      }
+
+      :root {
+        --page: #161618;
+        --accent: #efb100;
+        --accent-dim: #c79400;
+        --text: #9f9f9f;
+        --strong: #e6e6e6;
+        --muted: #7e7e7e;
+        --tag: #323232;
+        --rule: #3e3e3e;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        background: var(--page);
+      }
+
+      body {
+        font-family: 'IBM Plex Mono', monospace;
+        color: var(--text);
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .page {
+        position: relative;
+        width: 924px;
+        height: 1308px;
+        overflow: hidden;
+        background: var(--page);
+        break-after: page;
+      }
+
+      .page:last-child {
+        break-after: auto;
+      }
+
+      .eyebrow {
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .accent {
+        color: var(--accent);
+      }
+
+      h2 {
+        font-size: 17px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: 0.01em;
+      }
+
+      p,
+      .body {
+        font-size: 15.4px;
+        font-weight: 300;
+        line-height: 20px;
+      }
+
+      b {
+        font-weight: 700;
+        color: var(--strong);
+      }
+
+      /* Hero */
+      .portrait {
+        position: absolute;
+        left: 56px;
+        top: 88px;
+        width: 195px;
+        height: 195px;
+        border-radius: 14px;
+        object-fit: cover;
+      }
+
+      .hero {
+        position: absolute;
+        left: 293px;
+        top: 90px;
+        width: 560px;
+      }
+
+      .hero .greeting {
+        margin-top: 28px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+      }
+
+      .hero h1 {
+        margin-top: 2px;
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 58px;
+        line-height: 60px;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: -0.01em;
+      }
+
+      .hero p {
+        margin-top: 24px;
+      }
+
+      /* Left column */
+      .aside {
+        position: absolute;
+        left: 65px;
+        width: 190px;
+      }
+
+      .aside h2 {
+        margin-bottom: 14px;
+      }
+
+      .aside .lines {
+        font-size: 15.4px;
+        font-weight: 700;
+        line-height: 20px;
+        color: var(--text);
+      }
+
+      .aside .lines a {
+        display: block;
+        width: fit-content;
+      }
+
+      .linkedin {
+        display: block;
+        margin-top: 18px;
+        width: 33px;
+        height: 33px;
+      }
+
+      /* Timeline */
+      .timeline {
+        position: absolute;
+      }
+
+      .entry {
+        position: relative;
+        padding-left: 30px;
+      }
+
+      .entry::before {
+        content: '';
+        position: absolute;
+        left: -7.5px;
+        top: 3px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .entry::after {
+        content: '';
+        position: absolute;
+        left: -0.75px;
+        top: 10px;
+        bottom: 0;
+        width: 1.5px;
+        background: var(--rule);
+      }
+
+      .entry + .entry {
+        margin-top: 50px;
+      }
+
+      .role {
+        font-size: 17px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: 0.01em;
+      }
+
+      .period {
+        margin-left: 8px;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      .company {
+        margin-top: 2px;
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--accent-dim);
+      }
+
+      .entry p {
+        margin-top: 14px;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 11px 10px;
+        margin-top: 20px;
+      }
+
+      .tag {
+        padding: 0 12px;
+        height: 31px;
+        line-height: 31px;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+        background: var(--tag);
+        white-space: nowrap;
+      }
+
+      .cont {
+        position: absolute;
+        right: 32px;
+        bottom: 46px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      /* Page 2 */
+      .flow {
+        padding-top: 92px;
+      }
+
+      .skills {
+        position: relative;
+        margin-top: 36px;
+        left: 58px;
+        width: 808px;
+        border: 2px solid var(--rule);
+        padding: 34px 40px 40px;
+      }
+
+      .skills h3 {
+        margin: 0 0 12px;
+        font-size: 17px;
+        font-weight: 700;
+        color: #fff;
+      }
+
+      .skills .grid {
+        display: grid;
+        grid-template-columns: 384px 1fr;
+        row-gap: 28px;
+        margin-top: 20px;
+      }
+
+      .skills .wide {
+        grid-column: 1 / -1;
+      }
+
+      .skills .tags {
+        margin-top: 0;
+      }
+
+      .contact-row {
+        margin: 40px 58px 0;
+      }
+
+      .contact-row h2 {
+        color: var(--accent);
+      }
+
+      .contact-row .row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 18px;
+        font-size: 15.4px;
+        font-weight: 700;
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Page 1 -->
+    <section class="page">
+      <img class="portrait" src="../public/profile-512.png" alt="FJ Lessing" />
+
+      <div class="hero">
+        <div class="eyebrow">Head of Development at BRAVE Digital</div>
+        <div class="greeting">Hi, I’m</div>
+        <h1>FJ Lessing</h1>
+        <p>
+          As Head of Development at BRAVE Digital, I lead a team of talented
+          developers delivering software for a diverse client base. I focus on
+          <b>scoping and architecting projects</b>,
+          <b>overseeing developer growth</b> and wellbeing, guiding technical
+          strategy, and shipping quality work on time and within budget.<br />
+          <b>I now manage agents as well as developers.</b> I decide where an
+          agent gets work, how it gets context, how far it can act on its own,
+          and how its output is checked.<br />
+          <b>Under all of it is full-stack experience</b> with TypeScript,
+          Laravel, Node.js, Vue and React, mobile apps with Flutter, React
+          Native and Swift, and DevOps across servers and cloud.
+        </p>
+      </div>
+
+      <div class="aside" style="top: 537px">
+        <h2>EDUCATION</h2>
+        <div class="lines">
+          BIS Multimedia<br />University of<br />Pretoria,<br />2011-2016
+        </div>
+      </div>
+
+      <div class="aside" style="top: 724px">
+        <h2>CONTACT</h2>
+        <div class="lines">
+          <a href="mailto:me@fjlessing.co.za">me@fjlessing.co.za</a>
+          +27 83 233 6448
+          <a href="https://www.fjlessing.co.za">fjlessing.co.za</a>
+        </div>
+        <a
+          class="linkedin"
+          href="https://www.linkedin.com/in/fj-lessing/"
+          aria-label="FJ Lessing on LinkedIn"
+        >
+          <svg viewBox="0 0 33 33" width="33" height="33">
+            <rect width="33" height="33" rx="2" fill="#efb100" />
+            <g fill="#161618">
+              <rect x="6" y="12.5" width="4.6" height="14" />
+              <circle cx="8.3" cy="8" r="2.6" />
+              <path
+                d="M13.6 12.5h4.4v2c.7-1.3 2.3-2.4 4.6-2.4 4.4 0 5.2 2.8 5.2 6.5v7.9h-4.6v-7c0-1.7 0-3.8-2.3-3.8s-2.7 1.8-2.7 3.7v7.1h-4.6z"
+              />
+            </g>
+          </svg>
+        </a>
+      </div>
+
+      <div class="aside" style="top: 949px">
+        <h2>CODE</h2>
+        <div class="lines">
+          <a href="https://github.com/FJLessing">GitHub: FJLessing</a>
+        </div>
+      </div>
+
+      <h2 style="position: absolute; left: 329px; top: 537px">
+        WORK <span class="accent">EXPERIENCE</span>
+      </h2>
+
+      <div class="timeline" style="left: 299px; top: 571px; width: 556px">
+        <div class="entry">
+          <div>
+            <span class="role">HEAD OF DEVELOPMENT</span
+            ><span class="period">2021 - Present</span>
+          </div>
+          <div class="company">BRAVE Digital</div>
+          <p>
+            Lead a team of around 5-10 developers and set how the team adopts AI
+            and agentic development: how context is given, how agents are set
+            up, where an agent can act on its own, and how AI-generated code is
+            reviewed before it ships. Also responsible for scoping and
+            architecture, technical strategy, developer growth and DevOps. I
+            still work as a senior developer on projects to help the team hit
+            budgets and deadlines.
+          </p>
+          <div class="tags">
+            <span class="tag">AI Agents</span>
+            <span class="tag">Claude</span>
+            <span class="tag">TypeScript</span>
+            <span class="tag">Laravel</span>
+            <span class="tag">Node.js</span>
+            <span class="tag">Vue</span>
+            <span class="tag">React</span>
+            <span class="tag">Flutter</span>
+            <span class="tag">AWS</span>
+            <span class="tag">DevOps</span>
+          </div>
+        </div>
+
+        <div class="entry">
+          <div>
+            <span class="role">FULL-STACK DEVELOPER</span
+            ><span class="period">2015 - 2021</span>
+          </div>
+          <div class="company">BRAVE Digital</div>
+          <p>
+            Worked as a full-stack software developer using Laravel, Node.js,
+            Vue, and React. Developed mobile apps with Flutter, React Native,
+            Cordova, and Swift. Worked on complex software solutions for
+            startups and corporate clients. Developed experimental projects
+            including Unity and VR applications.
+          </p>
+          <div class="tags">
+            <span class="tag">Laravel</span>
+            <span class="tag">Node.js</span>
+            <span class="tag">Vue</span>
+            <span class="tag">React</span>
+            <span class="tag">Flutter</span>
+            <span class="tag">React Native</span>
+            <span class="tag">Unity</span>
+            <span class="tag">VR</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cont">
+        <span class="eyebrow">Work experience cont.</span>
+        <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true">
+          <path
+            d="M0 6h20M15 1l5 5-5 5"
+            fill="none"
+            stroke="#efb100"
+            stroke-width="1.5"
+          />
+        </svg>
+      </div>
+    </section>
+
+    <!-- Page 2 -->
+    <section class="page">
+      <div class="flow">
+        <h2 style="position: absolute; left: 58px; top: 94px">
+          WORK <span class="accent">EXPERIENCE CONT.</span>
+        </h2>
+
+        <div
+          class="timeline"
+          style="position: relative; left: 329px; width: 525px"
+        >
+          <div class="entry">
+            <div>
+              <span class="role">CONSULTANT/DEVELOPER</span
+              ><span class="period">2014 - Present</span>
+            </div>
+            <div class="company">Freelance</div>
+            <p>
+              Independent work for clients across industries, increasingly
+              AI-led. I review AI-generated code for correctness, and on my last
+              two platforms built a review harness into the codebase with
+              AGENTS.md and Skills. Shipped two sites built end to end with AI.
+            </p>
+            <div class="tags">
+              <span class="tag">AI Code Review</span>
+              <span class="tag">Agentic Development</span>
+              <span class="tag">Full-Stack</span>
+              <span class="tag">Agent Skills Development</span>
+              <span class="tag">Web Development</span>
+              <span class="tag">Consulting</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="skills" id="skills">
+          <h2>SKILLS &amp; <span class="accent">TECHNOLOGIES</span></h2>
+          <div class="grid">
+            <div class="wide">
+              <h3>AI &amp; Agentic Engineering</h3>
+              <div class="tags">
+                <span class="tag">Agentic Development</span>
+                <span class="tag">Agent Design &amp; Orchestration</span>
+                <span class="tag">Claude Code</span>
+                <span class="tag">OpenCode</span>
+                <span class="tag">Spec-driven Engineering</span>
+                <span class="tag">MCP</span>
+                <span class="tag">Anthropic API</span>
+                <span class="tag">OpenAI API</span>
+                <span class="tag">Python for AI &amp; Data</span>
+                <span class="tag">AI-Assisted Testing</span>
+                <span class="tag">AI-Driven Data Migration</span>
+              </div>
+            </div>
+            <div>
+              <h3>Core Skills</h3>
+              <div class="tags" style="width: 370px">
+                <span class="tag">AI Integration</span>
+                <span class="tag">Software Engineering</span>
+                <span class="tag">Web Development</span>
+                <span class="tag">Server Architecture</span>
+                <span class="tag">Solution Architecture</span>
+                <span class="tag">Software Development</span>
+                <span class="tag">Mobile App Development</span>
+              </div>
+            </div>
+            <div>
+              <h3>Languages</h3>
+              <div class="tags">
+                <span class="tag">HTML</span>
+                <span class="tag">CSS</span>
+                <span class="tag">JavaScript</span>
+                <span class="tag">TypeScript</span>
+                <span class="tag">Dart</span>
+                <span class="tag">Go</span>
+                <span class="tag">PHP</span>
+                <span class="tag">SQL</span>
+                <span class="tag">Python</span>
+                <span class="tag">Java</span>
+                <span class="tag">C#</span>
+              </div>
+            </div>
+            <div>
+              <h3>Frameworks</h3>
+              <div class="tags" style="width: 370px">
+                <span class="tag">Laravel</span>
+                <span class="tag">Node.js</span>
+                <span class="tag">Vue</span>
+                <span class="tag">Angular</span>
+                <span class="tag">React Native</span>
+                <span class="tag">WordPress</span>
+                <span class="tag">Tailwind</span>
+                <span class="tag">Bootstrap</span>
+                <span class="tag">SASS</span>
+                <span class="tag">React</span>
+                <span class="tag">Flutter</span>
+              </div>
+            </div>
+            <div>
+              <h3>Tools &amp; DevOps</h3>
+              <div class="tags">
+                <span class="tag">Linux</span>
+                <span class="tag">Git</span>
+                <span class="tag">Docker</span>
+                <span class="tag">AWS</span>
+                <span class="tag">Google Cloud Platform</span>
+                <span class="tag">MySQL</span>
+                <span class="tag">PostgreSQL</span>
+                <span class="tag">Apache</span>
+                <span class="tag">Nginx</span>
+                <span class="tag">GitHub CI/CD</span>
+                <span class="tag">Bitbucket Pipelines</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-row" id="contact">
+          <h2>CONTACT</h2>
+          <div class="row">
+            <a href="https://www.fjlessing.co.za">fjlessing.co.za</a>
+            <span>+27 83 233 6448</span>
+            <a href="mailto:me@fjlessing.co.za">me@fjlessing.co.za</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

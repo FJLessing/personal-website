@@ -25,6 +25,7 @@
     "bg:contrast": "vite-node scripts/background-contrast.ts",
     "browser:install": "scripts/install-headless-browser.sh",
     "screenshot": "node scripts/screenshot.mjs",
+    "cv:build": "node scripts/build-cv.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {

@@ -61,6 +61,15 @@ import { HERO } from '~/content/site'
               {{ HERO.ctaLabel }}
               <AppIcon name="mail" class="h-4 w-4" />
             </a>
+            <a
+              :href="HERO.cv.href"
+              :download="HERO.cv.fileName"
+              type="application/pdf"
+              class="flex items-center gap-2 rounded-lg border border-yellow-500 px-6 py-3 font-bold text-yellow-500 transition-colors hover:bg-yellow-500 hover:text-black"
+            >
+              {{ HERO.cv.label }}
+              <AppIcon name="download" class="h-4 w-4" />
+            </a>
           </div>
 
           <ul class="mt-4 mb-2 flex flex-wrap items-center gap-4">

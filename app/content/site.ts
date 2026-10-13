@@ -24,6 +24,7 @@ export type IconName =
   | 'phone'
   | 'map-pin'
   | 'coffee'
+  | 'download'
 
 export interface NavLink {
   readonly label: string
@@ -146,6 +147,13 @@ export interface HeroContent {
   readonly tagline: string
   readonly ctaLabel: string
   readonly ctaHref: string
+  /** The PDF CV in `public/`, built from `cv/cv.html` by `npm run cv:build`. */
+  readonly cv: {
+    readonly label: string
+    readonly href: string
+    /** Name the browser saves the file under. */
+    readonly fileName: string
+  }
   readonly socials: readonly SocialLink[]
 }
 
@@ -300,6 +308,11 @@ export const HERO: HeroContent = {
     'I lead a team of developers delivering software for startups and corporate clients, and I design how agents and agentic workflows fit that work. Full-stack, mobile and cloud engineering under all of it.',
   ctaLabel: 'Get in Touch',
   ctaHref: '#contact',
+  cv: {
+    label: 'Download CV',
+    href: '/fj-lessing-cv.pdf',
+    fileName: 'FJ Lessing CV.pdf',
+  },
   socials: [
     {
       label: 'FJ Lessing on GitHub',
