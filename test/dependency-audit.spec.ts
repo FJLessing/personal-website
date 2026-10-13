@@ -17,6 +17,12 @@ const ACCEPTED_DEV_ONLY = [
   'listhen',
 ]
 
+// `simple-git` is overridden to 4.x to clear its advisories, but
+// `@nuxt/devtools` 3.x still does `import Git from 'simple-git'`, a default
+// export v4 removed. That only works because devtools is disabled, so Nuxt
+// never loads it. Enabling devtools needs the override revisited first.
+const DEVTOOLS_DISABLED = /^\s*devtools:\s*\{\s*enabled:\s*false\s*\}/m
+
 type Lockfile = {
   packages: Record<string, { dev?: boolean; version?: string }>
 }
@@ -26,6 +32,12 @@ type Lockfile = {
 const lockfile = JSON.parse(
   readFileSync(join(process.cwd(), 'package-lock.json'), 'utf8'),
 ) as Lockfile
+
+const packageJson = JSON.parse(
+  readFileSync(join(process.cwd(), 'package.json'), 'utf8'),
+) as { overrides?: Record<string, string> }
+
+const nuxtConfig = readFileSync(join(process.cwd(), 'nuxt.config.ts'), 'utf8')
 
 const entriesFor = (name: string) =>
   Object.entries(lockfile.packages).filter(([path]) =>
@@ -44,6 +56,21 @@ describe('accepted audit advisories stay out of the shipped tree', () => {
     // An accepted package that has dropped out of the tree entirely is fine;
     // one that is present in production is not.
     for (const [path, meta] of entries) {
+      expect(meta.dev, `${path} is no longer dev-only`).toBe(true)
+    }
+  })
+})
+
+describe('the simple-git override stays safe', () => {
+  it.runIf(packageJson.overrides?.['simple-git'])(
+    'keeps devtools disabled while simple-git is overridden',
+    () => {
+      expect(nuxtConfig).toMatch(DEVTOOLS_DISABLED)
+    },
+  )
+
+  it('resolves simple-git as dev-only', () => {
+    for (const [path, meta] of entriesFor('simple-git')) {
       expect(meta.dev, `${path} is no longer dev-only`).toBe(true)
     }
   })
