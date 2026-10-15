@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { createContourScene } from '~/utils/backgrounds/contourScene'
+import { createFieldScene } from '~/utils/backgrounds/fieldScene'
 
 /**
- * The site background: "Contour", a slow topographic height field drawn as
- * isolines, with the cursor pressing a dent into the terrain.
+ * The site background: "Field", a grid of short yellow dashes drifting on a
+ * slow flow field. The cursor, or on a phone the tilt of the device and a slow
+ * wander, pushes the dashes out into a springy ring.
  *
  * The `.client` suffix means Nuxt never renders this on the server, so the
  * scene and the canvas runtime are free to touch `window`, `document`,
@@ -13,15 +14,17 @@ import { createContourScene } from '~/utils/backgrounds/contourScene'
  * disabled or still loading.
  *
  * Everything the background has to obey (reduced motion, pausing when hidden
- * or off-screen, capping the backing store, cutting work on small screens)
- * lives in `useBackgroundCanvas`. This component is the mount boundary and the
+ * or off-screen, capping the backing store, cutting work on small screens,
+ * listening to tilt and motion only where they make sense) lives in
+ * `useBackgroundCanvas`. This component is the mount boundary and the
  * `aria-hidden` wrapper, nothing more.
  */
-const { canvas } = useBackgroundCanvas(createContourScene, {
-  // Isolines move slowly enough that 24fps is indistinguishable from 60, and
-  // each frame resamples the whole field, so this is the main cost control.
-  fps: 24,
-  smallFps: 15,
+const { canvas } = useBackgroundCanvas(createFieldScene, {
+  // Springs read as stepped below about 24fps, so this runs faster than the
+  // old isolines did. A frame is a few thousand dashes in twelve strokes; if
+  // a real phone struggles, lower `smallFps` first.
+  fps: 30,
+  smallFps: 24,
 })
 </script>
 

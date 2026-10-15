@@ -28,7 +28,10 @@ export interface BackgroundCanvasOptions {
  *   - the backing store is capped, harder on small screens, and the scene is
  *     told it is small so it can cut its own work;
  *   - the frame step is clamped, so coming back from a hidden tab resumes
- *     instead of fast-forwarding.
+ *     instead of fast-forwarding;
+ *   - device tilt and motion are only listened to on a coarse pointer, with
+ *     reduced motion off, for a scene that asks for them, and the iOS
+ *     permission prompt is only ever raised from the user's first gesture.
  *
  * The caller binds the returned ref to its `<canvas>` and does nothing else.
  */
@@ -53,6 +56,7 @@ export function useBackgroundCanvas(
 
     const scene = createScene()
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const coarsePointer = window.matchMedia('(pointer: coarse)')
 
     let size: SceneSize = { width: 0, height: 0, dpr: 0, small: false }
     let handle = 0
@@ -149,8 +153,17 @@ export function useBackgroundCanvas(
     }
     const clearPointer = () => scene.pointer?.(null, null)
 
+    const sensors = createSensorBridge(scene)
+    const syncSensors = () =>
+      sensors.listen(coarsePointer.matches && !reducedMotion.matches)
+    const onReducedMotion = () => {
+      syncSensors()
+      sync()
+    }
+
     document.addEventListener('visibilitychange', sync)
-    reducedMotion.addEventListener('change', sync)
+    reducedMotion.addEventListener('change', onReducedMotion)
+    coarsePointer.addEventListener('change', syncSensors)
     if (scene.pointer) {
       window.addEventListener('pointermove', onPointerMove, { passive: true })
       document.addEventListener('pointerleave', clearPointer)
@@ -158,14 +171,17 @@ export function useBackgroundCanvas(
     }
 
     measure()
+    syncSensors()
     sync()
 
     return () => {
       stop()
+      sensors.listen(false)
       resizeObserver.disconnect()
       intersectionObserver.disconnect()
       document.removeEventListener('visibilitychange', sync)
-      reducedMotion.removeEventListener('change', sync)
+      reducedMotion.removeEventListener('change', onReducedMotion)
+      coarsePointer.removeEventListener('change', syncSensors)
       if (scene.pointer) {
         window.removeEventListener('pointermove', onPointerMove)
         document.removeEventListener('pointerleave', clearPointer)
@@ -193,4 +209,188 @@ export function useBackgroundCanvas(
   )
 
   return { canvas }
+}
+
+/** Tilt, in degrees either way from the calibrated zero, that maps to ±1. */
+const TILT_RANGE = 25
+/** Time constant of the drifting zero point, in ms. */
+const CALIBRATION_MS = 4000
+/** Time constant of the tilt low-pass filter, in ms. */
+const TILT_SMOOTHING_MS = 150
+/** Time constant of the gravity estimate the jolt is measured against, in ms. */
+const GRAVITY_MS = 250
+/** High-passed acceleration, in m/s², below which nothing counts as a jolt. */
+const JOLT_FLOOR = 1.5
+/** High-passed acceleration above the floor that makes a full-strength jolt. */
+const JOLT_RANGE = 8
+/** Shortest gap between two jolts, in ms, so a shake does not pump the springs. */
+const JOLT_GAP_MS = 150
+
+interface PermissionGated {
+  requestPermission?: () => Promise<string>
+}
+
+/** `1 - e^(-dt/tau)`: the frame-rate-independent blend for a low-pass. */
+const blend = (dt: number, tau: number) => 1 - Math.exp(-Math.max(0, dt) / tau)
+
+const clamp = (value: number) => Math.max(-1, Math.min(1, value))
+
+/**
+ * Turns `deviceorientation` and `devicemotion` into the scene's `tilt` and
+ * `jolt` hooks: rotated to the screen, calibrated, clamped and filtered, so
+ * the scene only ever sees clean -1..1 and 0..1 values and stays testable in
+ * Node. `listen(true)` attaches, `listen(false)` detaches; both are idempotent.
+ */
+function createSensorBridge(scene: BackgroundScene) {
+  const wanted = Boolean(scene.tilt || scene.jolt)
+  let listening = false
+  let permissionAsked = false
+
+  // Tilt state, in screen-aligned degrees.
+  let zeroX = 0
+  let zeroY = 0
+  let tiltX = 0
+  let tiltY = 0
+  let lastTilt: number | null = null
+
+  // Motion state, in m/s².
+  let gravityX = 0
+  let gravityY = 0
+  let gravityZ = 0
+  let lastMotion: number | null = null
+  let lastJolt = -Infinity
+
+  const onOrientation = (event: DeviceOrientationEvent) => {
+    if (event.beta == null || event.gamma == null) return
+    // Rotate (gamma, beta) by the screen angle, so landscape tilts the same
+    // way on screen as portrait does.
+    // `screen.orientation` is missing before iOS 16.4; the old
+    // `window.orientation` carries the same angle there.
+    const degrees =
+      window.screen?.orientation?.angle ??
+      (window as { orientation?: number }).orientation ??
+      0
+    const angle = (degrees * Math.PI) / 180
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    const x = event.gamma * cos + event.beta * sin
+    const y = event.beta * cos - event.gamma * sin
+
+    const now = performance.now()
+    if (lastTilt === null) {
+      // The first reading is how the device is being held: call that zero.
+      zeroX = x
+      zeroY = y
+      tiltX = 0
+      tiltY = 0
+    } else {
+      const dt = now - lastTilt
+      // The zero drifts towards the current angle, so the field answers
+      // changes in tilt rather than the angle the phone happens to rest at.
+      const drift = blend(dt, CALIBRATION_MS)
+      zeroX += (x - zeroX) * drift
+      zeroY += (y - zeroY) * drift
+      const smooth = blend(dt, TILT_SMOOTHING_MS)
+      tiltX += (clamp((x - zeroX) / TILT_RANGE) - tiltX) * smooth
+      tiltY += (clamp((y - zeroY) / TILT_RANGE) - tiltY) * smooth
+    }
+    lastTilt = now
+    scene.tilt?.(tiltX, tiltY)
+  }
+
+  const onMotion = (event: DeviceMotionEvent) => {
+    const source =
+      event.acceleration?.x != null
+        ? event.acceleration
+        : event.accelerationIncludingGravity
+    if (source?.x == null || source.y == null || source.z == null) return
+    const now = performance.now()
+    if (lastMotion === null) {
+      gravityX = source.x
+      gravityY = source.y
+      gravityZ = source.z
+      lastMotion = now
+      return
+    }
+    // High-pass: subtract a slow estimate of the steady part (gravity, or a
+    // steady push), so only a sudden change counts.
+    const k = blend(now - lastMotion, GRAVITY_MS)
+    lastMotion = now
+    gravityX += (source.x - gravityX) * k
+    gravityY += (source.y - gravityY) * k
+    gravityZ += (source.z - gravityZ) * k
+    const size = Math.hypot(
+      source.x - gravityX,
+      source.y - gravityY,
+      source.z - gravityZ,
+    )
+    if (size <= JOLT_FLOOR || now - lastJolt < JOLT_GAP_MS) return
+    lastJolt = now
+    scene.jolt?.(Math.min(1, (size - JOLT_FLOOR) / JOLT_RANGE))
+  }
+
+  const gated = (): PermissionGated[] =>
+    [
+      typeof DeviceOrientationEvent === 'undefined'
+        ? undefined
+        : (DeviceOrientationEvent as unknown as PermissionGated),
+      typeof DeviceMotionEvent === 'undefined'
+        ? undefined
+        : (DeviceMotionEvent as unknown as PermissionGated),
+    ].filter(
+      (api): api is PermissionGated =>
+        typeof api?.requestPermission === 'function',
+    )
+
+  /**
+   * iOS 13+ only delivers sensor events after `requestPermission()`, which
+   * must be called from a user gesture. So it is called once, from the first
+   * tap or click, and never on load. A refusal changes nothing: the scene
+   * keeps its idle motion.
+   */
+  const onFirstGesture = () => {
+    removeGesture()
+    if (permissionAsked) return
+    permissionAsked = true
+    for (const api of gated()) {
+      api.requestPermission!().catch(() => {})
+    }
+  }
+  const removeGesture = () => {
+    window.removeEventListener('touchend', onFirstGesture, true)
+    window.removeEventListener('click', onFirstGesture, true)
+  }
+
+  const listen = (on: boolean) => {
+    const next = on && wanted
+    if (next === listening) return
+    listening = next
+    if (next) {
+      lastTilt = null
+      lastMotion = null
+      // Tell the scene it is on a handheld before any reading arrives.
+      scene.tilt?.(null, null)
+      if (scene.tilt)
+        window.addEventListener('deviceorientation', onOrientation)
+      if (scene.jolt) window.addEventListener('devicemotion', onMotion)
+      if (!permissionAsked && gated().length > 0) {
+        window.addEventListener('touchend', onFirstGesture, {
+          capture: true,
+          passive: true,
+        })
+        window.addEventListener('click', onFirstGesture, {
+          capture: true,
+          passive: true,
+        })
+      }
+      return
+    }
+    window.removeEventListener('deviceorientation', onOrientation)
+    window.removeEventListener('devicemotion', onMotion)
+    removeGesture()
+    // Drop the last reading, so no parallax is left frozen in place.
+    scene.tilt?.(null, null)
+  }
+
+  return { listen }
 }

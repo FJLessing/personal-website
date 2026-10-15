@@ -22,9 +22,16 @@ interface Viewport {
   width: number
   height: number
   devicePixelRatio: number
+  /** `(pointer: coarse)`: a phone or tablet. */
+  coarse?: boolean
 }
 
-function createHarness({ width, height, devicePixelRatio }: Viewport) {
+function createHarness({
+  width,
+  height,
+  devicePixelRatio,
+  coarse = false,
+}: Viewport) {
   let frames = 0
   let stills = 0
   const steps: number[] = []
@@ -92,6 +99,7 @@ function createHarness({ width, height, devicePixelRatio }: Viewport) {
     value: (query: string) => ({
       media: query,
       get matches() {
+        if (query.includes('pointer: coarse')) return coarse
         return query.includes('prefers-reduced-motion') && reduced
       },
       addEventListener: (_: string, fn: () => void) => mediaListeners.add(fn),
@@ -165,7 +173,12 @@ function createHarness({ width, height, devicePixelRatio }: Viewport) {
 type Harness = ReturnType<typeof createHarness>
 
 const DESKTOP: Viewport = { width: 1440, height: 900, devicePixelRatio: 3 }
-const PHONE: Viewport = { width: 360, height: 740, devicePixelRatio: 3 }
+const PHONE: Viewport = {
+  width: 360,
+  height: 740,
+  devicePixelRatio: 3,
+  coarse: true,
+}
 
 /** A component that does nothing but run the composable. */
 const canvasComponent = (scene: BackgroundScene) =>
@@ -351,5 +364,199 @@ describe('background canvas runtime', () => {
       harness.tick(80)
       expect(harness.frames()).toBe(2)
     })
+  })
+})
+
+/** A scene that asks for tilt and jolt, recording every call. */
+function sensorScene(harness: Harness) {
+  const tilt = vi.fn<(x: number | null, y: number | null) => void>()
+  const jolt = vi.fn<(strength: number) => void>()
+  return { scene: { ...harness.scene, tilt, jolt }, tilt, jolt }
+}
+
+/** Fires a `deviceorientation` at `now`, with the given angles in degrees. */
+function orient(harness: Harness, now: number, gamma: number, beta: number) {
+  harness.tick(now)
+  const event = Object.assign(new Event('deviceorientation'), { gamma, beta })
+  window.dispatchEvent(event)
+}
+
+/** Fires a `devicemotion` at `now`, gravity-free acceleration in m/s². */
+function shake(harness: Harness, now: number, x: number, y: number, z: number) {
+  harness.tick(now)
+  const event = Object.assign(new Event('devicemotion'), {
+    acceleration: { x, y, z },
+    accelerationIncludingGravity: null,
+  })
+  window.dispatchEvent(event)
+}
+
+/** Stubs the iOS 13+ permission gate on both sensor event constructors. */
+function stubPermissionGate() {
+  const orientation = vi.fn(() => Promise.resolve('granted'))
+  const motion = vi.fn(() => Promise.resolve('granted'))
+  vi.stubGlobal('DeviceOrientationEvent', { requestPermission: orientation })
+  vi.stubGlobal('DeviceMotionEvent', { requestPermission: motion })
+  return { orientation, motion }
+}
+
+describe('background canvas sensors', () => {
+  let harness: Harness
+
+  it('does not listen on a fine pointer, even for a scene that wants tilt', async () => {
+    harness = createHarness(DESKTOP)
+    const { scene, tilt } = sensorScene(harness)
+    const add = vi.spyOn(window, 'addEventListener')
+    await mountCanvas(scene)
+
+    const types = add.mock.calls.map(([type]) => type)
+    expect(types).not.toContain('deviceorientation')
+    expect(types).not.toContain('devicemotion')
+    orient(harness, 50, 10, 40)
+    expect(tilt).not.toHaveBeenCalled()
+  })
+
+  it('does not listen for a scene without tilt or jolt', async () => {
+    harness = createHarness(PHONE)
+    const add = vi.spyOn(window, 'addEventListener')
+    await mountCanvas(harness.scene)
+
+    const types = add.mock.calls.map(([type]) => type)
+    expect(types).not.toContain('deviceorientation')
+    expect(types).not.toContain('devicemotion')
+  })
+
+  it('listens on a coarse pointer and says so before any reading', async () => {
+    harness = createHarness(PHONE)
+    const { scene, tilt } = sensorScene(harness)
+    const add = vi.spyOn(window, 'addEventListener')
+    await mountCanvas(scene)
+
+    const types = add.mock.calls.map(([type]) => type)
+    expect(types).toContain('deviceorientation')
+    expect(types).toContain('devicemotion')
+    // The handheld signal, so the scene can wander with no input.
+    expect(tilt).toHaveBeenCalledWith(null, null)
+  })
+
+  it('does not listen under reduced motion', async () => {
+    harness = createHarness(PHONE)
+    harness.setReducedMotion(true)
+    const { scene, tilt } = sensorScene(harness)
+    const add = vi.spyOn(window, 'addEventListener')
+    await mountCanvas(scene)
+
+    const types = add.mock.calls.map(([type]) => type)
+    expect(types).not.toContain('deviceorientation')
+    expect(types).not.toContain('devicemotion')
+    orient(harness, 50, 10, 40)
+    expect(tilt).not.toHaveBeenCalled()
+  })
+
+  it('stops listening when reduced motion is turned on mid-session', async () => {
+    harness = createHarness(PHONE)
+    const { scene, tilt } = sensorScene(harness)
+    await mountCanvas(scene)
+    harness.setReducedMotion(true)
+    tilt.mockClear()
+
+    orient(harness, 50, 10, 40)
+    // Only the reset on detach, never a reading.
+    expect(tilt.mock.calls.every(([x, y]) => x === null && y === null)).toBe(
+      true,
+    )
+  })
+
+  it('removes every sensor listener on unmount', async () => {
+    harness = createHarness(PHONE)
+    const { scene, tilt, jolt } = sensorScene(harness)
+    const wrapper = await mountCanvas(scene)
+    wrapper.unmount()
+    tilt.mockClear()
+
+    orient(harness, 50, 10, 40)
+    orient(harness, 70, 40, 40)
+    shake(harness, 80, 0, 0, 0)
+    shake(harness, 100, 30, 0, 0)
+    expect(tilt.mock.calls.filter(([x]) => x !== null)).toHaveLength(0)
+    expect(jolt).not.toHaveBeenCalled()
+  })
+
+  it('calibrates to the first reading, then clamps and filters', async () => {
+    harness = createHarness(PHONE)
+    const { scene, tilt } = sensorScene(harness)
+    await mountCanvas(scene)
+
+    // Held at 40 degrees towards the user: that is zero, not a tilt.
+    orient(harness, 100, 0, 40)
+    expect(tilt).toHaveBeenLastCalledWith(0, 0)
+
+    // A 60-degree roll to the right is past the 25-degree range. Filtered,
+    // it ramps up rather than jumping, and it never goes past 1.
+    orient(harness, 116, 60, 40)
+    const firstStep = tilt.mock.lastCall![0]!
+    expect(firstStep).toBeGreaterThan(0)
+    expect(firstStep).toBeLessThan(0.5)
+    for (let t = 132; t < 1000; t += 16) orient(harness, t, 60, 40)
+    const [x, y] = tilt.mock.lastCall!
+    expect(x).toBeGreaterThan(0.9)
+    expect(x).toBeLessThanOrEqual(1)
+    expect(y).toBeCloseTo(0, 5)
+
+    // Held there, the zero catches up and the tilt drifts back to rest.
+    for (let t = 1000; t < 30_000; t += 100) orient(harness, t, 60, 40)
+    expect(Math.abs(tilt.mock.lastCall![0]!)).toBeLessThan(0.05)
+  })
+
+  it('turns a sudden movement into a jolt, and ignores a steady one', async () => {
+    harness = createHarness(PHONE)
+    const { scene, jolt } = sensorScene(harness)
+    await mountCanvas(scene)
+
+    shake(harness, 100, 0, 0, 0)
+    shake(harness, 116, 0.2, 0.1, 0)
+    expect(jolt).not.toHaveBeenCalled()
+
+    shake(harness, 132, 9, 0, 0)
+    expect(jolt).toHaveBeenCalledOnce()
+    const strength = jolt.mock.lastCall![0]!
+    expect(strength).toBeGreaterThan(0)
+    expect(strength).toBeLessThanOrEqual(1)
+  })
+
+  it('asks iOS for permission on the first gesture, never on mount, once', async () => {
+    harness = createHarness(PHONE)
+    const gate = stubPermissionGate()
+    const { scene } = sensorScene(harness)
+    await mountCanvas(scene)
+
+    expect(gate.orientation).not.toHaveBeenCalled()
+    expect(gate.motion).not.toHaveBeenCalled()
+
+    window.dispatchEvent(new Event('touchend'))
+    expect(gate.orientation).toHaveBeenCalledOnce()
+    expect(gate.motion).toHaveBeenCalledOnce()
+
+    window.dispatchEvent(new Event('touchend'))
+    window.dispatchEvent(new Event('click'))
+    expect(gate.orientation).toHaveBeenCalledOnce()
+    expect(gate.motion).toHaveBeenCalledOnce()
+  })
+
+  it('carries on quietly when iOS permission is refused', async () => {
+    harness = createHarness(PHONE)
+    vi.stubGlobal('DeviceOrientationEvent', {
+      requestPermission: () => Promise.reject(new Error('denied')),
+    })
+    vi.stubGlobal('DeviceMotionEvent', {
+      requestPermission: () => Promise.resolve('denied'),
+    })
+    const { scene } = sensorScene(harness)
+    await mountCanvas(scene)
+
+    window.dispatchEvent(new Event('click'))
+    await Promise.resolve()
+    harness.tick(100)
+    expect(harness.frames()).toBeGreaterThan(0)
   })
 })

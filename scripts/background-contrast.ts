@@ -9,11 +9,13 @@
  * on the page, so it is the one that sets the ceiling.
  */
 import {
-  ACCENT,
   ACCENT_TEXT,
   BODY_TEXT,
-  CONTOUR_ALPHA_HIGH,
-  CONTOUR_ALPHA_LOW,
+  FIELD_ALPHA_IDLE_LOW,
+  FIELD_ALPHA_PEAK,
+  FIELD_RING_OVERLAP,
+  FIELD_TONE_GAIN,
+  FIELD_TONES,
   MAX_HIGHLIGHT_LUMINANCE,
   MIN_VISIBLE_CONTRAST,
   PAGE_BASE,
@@ -23,10 +25,32 @@ import {
 } from '../app/utils/backgrounds/palette'
 import type { Rgb } from '../app/utils/backgrounds/palette'
 
-const rows: Array<{ label: string; colour: Rgb }> = [
-  { label: 'contour  faintest isoline', colour: composite(ACCENT, CONTOUR_ALPHA_LOW) }, // prettier-ignore
-  { label: 'contour  brightest isoline', colour: composite(ACCENT, CONTOUR_ALPHA_HIGH) }, // prettier-ignore
-]
+const TONE_NAMES = ['amber', 'accent', 'light']
+
+/**
+ * Per tone: the faintest dash and the brightest. Then the worst overlap: on
+ * the ring, a peak dash of one tone crossing a peak dash of another (or the
+ * same tone in a different bucket), stacked {@link FIELD_RING_OVERLAP} deep.
+ */
+const rows: Array<{ label: string; colour: Rgb }> = []
+FIELD_TONES.forEach((tone, i) => {
+  const gain = FIELD_TONE_GAIN[i]!
+  rows.push({ label: `field  ${TONE_NAMES[i]} faintest`, colour: composite(tone, FIELD_ALPHA_IDLE_LOW * gain) }) // prettier-ignore
+  rows.push({ label: `field  ${TONE_NAMES[i]} peak`, colour: composite(tone, FIELD_ALPHA_PEAK * gain) }) // prettier-ignore
+})
+let worst: { label: string; colour: Rgb } | null = null
+FIELD_TONES.forEach((under, i) => {
+  FIELD_TONES.forEach((over, j) => {
+    let colour: Rgb = composite(under, FIELD_ALPHA_PEAK * FIELD_TONE_GAIN[i]!)
+    for (let k = 1; k < FIELD_RING_OVERLAP; k += 1) {
+      colour = composite(over, FIELD_ALPHA_PEAK * FIELD_TONE_GAIN[j]!, colour)
+    }
+    if (!worst || relativeLuminance(colour) > relativeLuminance(worst.colour)) {
+      worst = { label: `field  ring overlap ${TONE_NAMES[j]}/${TONE_NAMES[i]}`, colour } // prettier-ignore
+    }
+  })
+})
+if (worst) rows.push(worst)
 
 const pad = (text: string, width: number) => text.padEnd(width)
 const ratio = (value: number) => `${value.toFixed(2)}:1`.padStart(7)

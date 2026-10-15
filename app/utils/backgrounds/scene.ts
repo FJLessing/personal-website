@@ -45,4 +45,23 @@ export interface BackgroundScene {
    * pointer left or the device is touch-only.
    */
   pointer?(x: number | null, y: number | null): void
+
+  /**
+   * Optional tilt hook. Defining it opts the scene into device orientation on
+   * a coarse-pointer device. Values are -1..1 on each axis, already rotated to
+   * the screen, calibrated to how the device is being held, clamped and
+   * low-pass filtered by the runtime. `null` means a handheld device with no
+   * reading (yet, or ever: the sensor may be missing or permission denied).
+   * The runtime calls `tilt(null, null)` once when it starts listening, so a
+   * scene can treat any call as "this is a handheld" and add its own idle
+   * motion in place of a cursor.
+   */
+  tilt?(x: number | null, y: number | null): void
+
+  /**
+   * Optional jolt hook. Defining it opts the scene into the accelerometer on a
+   * coarse-pointer device. `strength` is 0..1, the high-passed size of a
+   * sudden movement, rate-limited by the runtime.
+   */
+  jolt?(strength: number): void
 }

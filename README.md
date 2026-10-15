@@ -119,7 +119,7 @@ app/
     useBackgroundCanvas.ts      canvas runtime: rAF, reduced motion, pausing
   utils/backgrounds/
     scene.ts                    the contract the runtime drives
-    contourScene.ts             the isoline height field itself
+    fieldScene.ts               the dash field and its springy ring
     palette.ts                  the colour budget, both ends of it
 server/
   plugins/
@@ -188,10 +188,21 @@ filled in.
 
 ### The background
 
-`app/components/SiteBackground.client.vue` draws **Contour**: a slow
-topographic height field of four soft peaks drifting on Lissajous paths,
-sampled onto a grid and traced as isolines with marching squares. The cursor
-presses a dent into the terrain, so the lines bunch up around it.
+`app/components/SiteBackground.client.vue` draws **Field**: a jittered grid
+of short yellow dashes in three tones that turn and drift on a slow flow field
+while a brightness wave crosses them. On a desktop the cursor pushes the dashes
+out of a hole into a ring, where they turn tangent, stretch and brighten; each
+dash rides a damped spring, so the ring follows the cursor and settles back
+with a small overshoot. On a phone there is no cursor, so tilting the device
+rolls the ring across the screen and shifts the field with a little depth
+parallax, a sharp movement jiggles every spring, and with no input at all the
+ring wanders slowly on its own.
+
+The tilt needs a secure context (HTTPS) and, on iOS, a permission that can only
+be asked for from a user gesture. The runtime asks once, on the first tap, and
+never on load; if the answer is no, the wander carries on. Production must send
+`Permissions-Policy: accelerometer=(self), gyroscope=(self)` (see
+`DEPLOYMENT.md`), or Chrome never delivers the sensor events.
 
 The `.client` suffix means Nuxt never renders it on the server, so it may use
 `window`, `document`, `requestAnimationFrame` and a canvas freely without
@@ -206,16 +217,20 @@ children, so the background layer ends up underneath the page colour. It still
 renders, just multiplied down to a tenth of its brightness, which looks
 like a background that does not work rather than one that is mis-stacked.
 
-The split is deliberate. `app/utils/backgrounds/contourScene.ts` is a plain
+The split is deliberate. `app/utils/backgrounds/fieldScene.ts` is a plain
 module that only ever touches a 2D context, with no DOM and no timers, which is what
 lets it be driven from Node to measure cost. Everything browser-shaped lives in
 `app/composables/useBackgroundCanvas.ts`, and that is where the rules are
 enforced in one place: `prefers-reduced-motion: reduce` draws a single still
 frame and never starts the loop, the loop stops when the tab is hidden or the
 canvas scrolls off-screen, the backing store is capped (harder on small
-screens), and the scene is told it is small so it can coarsen its own grid.
+screens), the scene is told it is small so it can coarsen its own grid, and
+tilt and motion are only listened to on a coarse pointer with reduced motion
+off. Calibration, screen rotation and filtering of the sensors live there too,
+so the scene only ever sees clean -1..1 tilt and 0..1 jolt values.
 
-`npm run bg:cost` prints the per-frame cost at 360px and 1440px;
+`npm run bg:cost` prints the per-frame cost and stroke count at 360px and
+1440px, and fails over 2 ms (desktop), 1 ms (phone) or 12 strokes;
 `test/backgrounds.spec.ts` asserts the phone stays under 75% of the desktop
 work, so the cap cannot silently regress.
 
