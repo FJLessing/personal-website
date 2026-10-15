@@ -49,7 +49,11 @@ const policy = (nonce: string) =>
     "font-src 'self'",
     "connect-src 'self'",
     "manifest-src 'self'",
-    'upgrade-insecure-requests',
+    // Dev only drops this. The review server is plain HTTP on a LAN or
+    // tailnet hostname, and browsers exempt only localhost from the upgrade,
+    // so every script, stylesheet and font was rewritten to an `https://`
+    // URL the dev server cannot answer. Production is HTTPS behind Apache.
+    ...(import.meta.dev ? [] : ['upgrade-insecure-requests']),
   ].join('; ')
 
 export default defineNitroPlugin((nitro) => {
