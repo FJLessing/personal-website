@@ -496,7 +496,7 @@ meaningless — it belongs on `:443` only.
     Header unset      Referrer-Policy
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header unset      Permissions-Policy
-    Header always set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+    Header always set Permissions-Policy "accelerometer=(self), camera=(), geolocation=(), gyroscope=(self), magnetometer=(), microphone=(), payment=(), usb=()"
 
     # NO Content-Security-Policy here. The app sets it, with a per-request
     # nonce, in server/plugins/content-security-policy.ts. Two CSP headers do
@@ -695,7 +695,15 @@ preload list is easy while getting off it takes months. Both are owner decisions
 not defaults.
 
 **On `Permissions-Policy`:** every listed feature is denied outright (`=()`),
-because the site uses none of them. The syntax is the current structured one;
+because the site uses none of them, except `accelerometer` and `gyroscope`,
+which are allowed for the site's own origin (`=(self)`) and nobody else. The
+background ("Field") reads `deviceorientation` and `devicemotion` on phones to
+tilt and jiggle the field, and Chrome gates both events behind those two
+features: with `accelerometer=()` and `gyroscope=()` the events simply never
+fire and the tilt is dead on the live site. `magnetometer` stays denied,
+because the background uses relative orientation (how the phone moves from
+where it was first held), never a compass heading. No other origin is allowed
+the sensors, and the site embeds no frames anyway. The syntax is the current structured one;
 the old `Feature-Policy` header is dead and is not set.
 
 ---
