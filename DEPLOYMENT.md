@@ -697,8 +697,8 @@ not defaults.
 **On `Permissions-Policy`:** every listed feature is denied outright (`=()`),
 because the site uses none of them, except `accelerometer` and `gyroscope`,
 which are allowed for the site's own origin (`=(self)`) and nobody else. The
-background ("Field") reads `deviceorientation` and `devicemotion` on phones to
-tilt and jiggle the field, and Chrome gates both events behind those two
+background ("Wave") reads `deviceorientation` and `devicemotion` on phones:
+roll and pitch move the horizon, and a shake starts a ripple. Chrome gates both events behind those two
 features: with `accelerometer=()` and `gyroscope=()` the events simply never
 fire and the tilt is dead on the live site. `magnetometer` stays denied,
 because the background uses relative orientation (how the phone moves from
