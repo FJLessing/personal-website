@@ -1,18 +1,19 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { createFieldScene } from '../app/utils/backgrounds/fieldScene'
+import { createWaveScene } from '../app/utils/backgrounds/waveScene'
 import {
   ACCENT_TEXT,
   BODY_TEXT,
-  FIELD_ALPHA_IDLE_LOW,
-  FIELD_ALPHA_PEAK,
-  FIELD_RING_OVERLAP,
-  FIELD_TONE_GAIN,
-  FIELD_TONES,
   MAX_HIGHLIGHT_LUMINANCE,
   MIN_VISIBLE_CONTRAST,
   PAGE_BASE,
+  WAVE_ALPHA_FAINT,
+  WAVE_ALPHA_PEAK,
+  WAVE_MAX_RADIUS,
+  WAVE_MIN_SPACING,
+  WAVE_TONE_GAIN,
+  WAVE_TONES,
   composite,
   contrastRatio,
   relativeLuminance,
@@ -22,9 +23,9 @@ import type { BackgroundScene, SceneSize } from '../app/utils/backgrounds/scene'
 
 /**
  * The scene is a plain module that only ever touches a 2D context, which is the
- * whole point of the `BackgroundScene` contract: a counting stub is enough to
- * assert the two things that actually matter for a decorative background:
- * that it draws something, and that a phone does meaningfully less work than a
+ * whole point of the `BackgroundScene` contract: a recording stub is enough to
+ * assert what matters for a decorative background: that it draws something,
+ * where it draws it, and that a phone does meaningfully less work than a
  * desktop. `npm run bg:cost` prints the same counts with timings.
  */
 function stubContext() {
@@ -32,33 +33,31 @@ function stubContext() {
   const count = (name: string) => {
     calls[name] = (calls[name] ?? 0) + 1
   }
-  // Every segment drawn, as [fromX, fromY, toX, toY].
-  const segments: number[][] = []
-  let from: [number, number] = [0, 0]
+  // Every dot drawn in the last frame, as [x, y, radius].
+  const dots: number[][] = []
   const context = {
     calls,
-    segments,
+    dots,
     get drawCalls() {
-      return calls.lineTo ?? 0
+      return (calls.rect ?? 0) + (calls.arc ?? 0)
     },
     clearRect: () => {
       count('clearRect')
-      segments.length = 0
+      dots.length = 0
     },
     beginPath: () => count('beginPath'),
-    moveTo: (x: number, y: number) => {
-      count('moveTo')
-      from = [x, y]
+    moveTo: () => count('moveTo'),
+    rect: (x: number, y: number, w: number) => {
+      count('rect')
+      dots.push([x + w / 2, y + w / 2, w / 2])
     },
-    lineTo: (x: number, y: number) => {
-      count('lineTo')
-      segments.push([from[0], from[1], x, y])
+    arc: (x: number, y: number, r: number) => {
+      count('arc')
+      dots.push([x, y, r])
     },
-    stroke: () => count('stroke'),
+    fill: () => count('fill'),
     setTransform: () => count('setTransform'),
-    strokeStyle: '',
-    lineWidth: 1,
-    lineCap: 'butt',
+    fillStyle: '',
   }
   return context as typeof context & CanvasRenderingContext2D
 }
@@ -77,26 +76,6 @@ function averageDrawCalls(scene: BackgroundScene, size: SceneSize) {
 
 type Stub = ReturnType<typeof stubContext>
 
-/** Midpoints of the last frame's segments, rounded, sorted. */
-function midpoints(ctx: Stub) {
-  return ctx.segments
-    .map(([ax, ay, bx, by]) => [
-      Math.round(((ax! + bx!) / 2) * 10) / 10,
-      Math.round(((ay! + by!) / 2) * 10) / 10,
-    ])
-    .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!)
-}
-
-/** Midpoints that fall inside a box. */
-function inBox(
-  points: number[][],
-  [left, top, right, bottom]: [number, number, number, number],
-) {
-  return points.filter(
-    ([x, y]) => x! >= left && x! <= right && y! >= top && y! <= bottom,
-  )
-}
-
 /** Runs a scene for `seconds` of simulated time at 30fps; returns the context. */
 function run(scene: BackgroundScene, size: SceneSize, seconds: number) {
   const ctx = stubContext()
@@ -106,30 +85,61 @@ function run(scene: BackgroundScene, size: SceneSize, seconds: number) {
 }
 
 function laidOut(size: SceneSize) {
-  const scene = createFieldScene()
+  const scene = createWaveScene()
   scene.layout(size)
   return scene
 }
 
-const CENTRE_X = DESKTOP.width / 2
-const CENTRE_Y = DESKTOP.height / 2
-/** A box well inside the ring's hole, and a corner far outside it. */
-const NEAR: [number, number, number, number] = [
-  CENTRE_X - 40,
-  CENTRE_Y - 40,
-  CENTRE_X + 40,
-  CENTRE_Y + 40,
-]
-const FAR: [number, number, number, number] = [0, 0, 300, 200]
+/** Dots, rounded and sorted, so two frames compare as values. */
+function positions(ctx: Stub) {
+  return ctx.dots
+    .map(([x, y, r]) => [
+      Math.round(x! * 10) / 10,
+      Math.round(y! * 10) / 10,
+      Math.round(r! * 100) / 100,
+    ])
+    .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!)
+}
 
-describe('field scene', () => {
+/** Dots whose centre falls inside a box. */
+function inBox(
+  dots: number[][],
+  [left, top, right, bottom]: [number, number, number, number],
+) {
+  return dots.filter(
+    ([x, y]) => x! >= left && x! <= right && y! >= top && y! <= bottom,
+  )
+}
+
+/** Mean of one coordinate. */
+const mean = (dots: number[][], axis: number) =>
+  dots.reduce((sum, dot) => sum + dot[axis]!, 0) / dots.length
+
+/** The y of the highest dot in a vertical strip, i.e. the horizon there. */
+function topIn(dots: number[][], left: number, right: number) {
+  return Math.min(
+    ...dots.filter(([x]) => x! >= left && x! <= right).map(([, y]) => y!),
+  )
+}
+
+/** Mean absolute move between two frames' dots, matched by draw order. */
+function meanMove(a: Stub, b: Stub) {
+  const n = Math.min(a.dots.length, b.dots.length)
+  let sum = 0
+  for (let i = 0; i < n; i += 1) {
+    sum += Math.hypot(a.dots[i]![0]! - b.dots[i]![0]!, a.dots[i]![1]! - b.dots[i]![1]!) // prettier-ignore
+  }
+  return sum / n
+}
+
+describe('wave scene', () => {
   it('draws something on a desktop viewport', () => {
-    expect(averageDrawCalls(createFieldScene(), DESKTOP)).toBeGreaterThan(0)
+    expect(averageDrawCalls(createWaveScene(), DESKTOP)).toBeGreaterThan(1000)
   })
 
   it('does substantially less work on a phone viewport', () => {
-    const desktop = averageDrawCalls(createFieldScene(), DESKTOP)
-    const phone = averageDrawCalls(createFieldScene(), PHONE)
+    const desktop = averageDrawCalls(createWaveScene(), DESKTOP)
+    const phone = averageDrawCalls(createWaveScene(), PHONE)
     expect(phone).toBeLessThan(desktop * 0.75)
   })
 
@@ -140,98 +150,186 @@ describe('field scene', () => {
     expect(ctx.calls.clearRect).toBe(10)
   })
 
-  it('strokes at most twelve times a frame, ring included', () => {
+  it('fills at most twelve times a frame, dent and ripples included', () => {
     const scene = laidOut(DESKTOP)
-    scene.pointer?.(CENTRE_X, CENTRE_Y)
-    const ctx = run(scene, DESKTOP, 2)
-    expect(ctx.calls.stroke! / ctx.calls.clearRect!).toBeLessThanOrEqual(12)
+    const ctx = stubContext()
+    for (let i = 0; i < 60; i += 1) {
+      scene.pointer?.(200 + i * 18, 650)
+      scene.draw(ctx, DESKTOP, 1000 / 30)
+    }
+    expect(ctx.calls.fill! / ctx.calls.clearRect!).toBeLessThanOrEqual(12)
+    expect(ctx.calls.stroke).toBeUndefined()
   })
 
   it('draws a still frame without being handed a time step', () => {
     const scene = laidOut(DESKTOP)
     const ctx = stubContext()
     scene.still(ctx, DESKTOP)
-    expect(ctx.drawCalls).toBeGreaterThan(0)
+    expect(ctx.drawCalls).toBeGreaterThan(1000)
   })
 
   it('draws the same still frame twice, so nothing advances', () => {
     // `still` is what reduced motion gets instead of the loop. If it moved the
     // clock, a resize under reduced motion would animate one frame at a time.
-    // It also ignores the ring and the tilt, so even a scene that has been
-    // running with a cursor on it gives the identical idle frame.
+    // It also ignores the dent, the ripples and the tilt, so even a scene that
+    // has been running with a cursor on it gives the identical frame.
     const scene = laidOut(DESKTOP)
     const first = stubContext()
     scene.still(first, DESKTOP)
-    scene.pointer?.(CENTRE_X, CENTRE_Y)
     scene.tilt?.(0.8, -0.5)
-    run(scene, DESKTOP, 1)
+    for (let i = 0; i < 20; i += 1) {
+      scene.pointer?.(300 + i * 50, 700)
+      scene.draw(stubContext(), DESKTOP, 1000 / 30)
+    }
+    scene.jolt?.(1)
     const second = stubContext()
     scene.still(second, DESKTOP)
-    expect(second.segments).toEqual(first.segments)
+    expect(second.dots).toEqual(first.dots)
   })
 
-  it('pushes the dashes near the pointer out, and leaves far ones alone', () => {
-    const idle = run(laidOut(DESKTOP), DESKTOP, 1.5)
+  it('keeps the swells rolling with no input at all', () => {
+    const scene = laidOut(DESKTOP)
+    const before = run(scene, DESKTOP, 0.1)
+    const after = run(scene, DESKTOP, 1)
+    expect(meanMove(before, after)).toBeGreaterThan(0.5)
+  })
+
+  it.each([
+    ['desktop', DESKTOP],
+    ['phone', PHONE],
+  ] as const)(
+    'draws nothing in the top third on a %s, level',
+    (_name, size) => {
+      const scene = laidOut(size)
+      const still = stubContext()
+      scene.still(still, size)
+      const live = run(scene, size, 2)
+      for (const ctx of [still, live]) {
+        expect(inBox(ctx.dots, [-10, -10, size.width + 10, size.height * 0.3])).toEqual([]) // prettier-ignore
+        // And the water does reach up to the horizon, not stop short of it.
+        expect(topIn(ctx.dots, 0, size.width)).toBeLessThan(size.height * 0.36)
+      }
+    },
+  )
+
+  it('draws near rows with bigger dots than far rows', () => {
+    const scene = laidOut(DESKTOP)
+    const ctx = stubContext()
+    scene.still(ctx, DESKTOP)
+    const far = inBox(ctx.dots, [0, 0, DESKTOP.width, DESKTOP.height * 0.45])
+    const near = inBox(ctx.dots, [0, DESKTOP.height * 0.85, DESKTOP.width, DESKTOP.height]) // prettier-ignore
+    expect(far.length).toBeGreaterThan(100)
+    expect(near.length).toBeGreaterThan(100)
+    expect(mean(near, 2)).toBeGreaterThan(mean(far, 2) * 1.8)
+    expect(Math.max(...ctx.dots.map(([, , r]) => r!))).toBeLessThanOrEqual(WAVE_MAX_RADIUS) // prettier-ignore
+  })
+
+  it('keeps dots apart, so no two can stack into a brighter pixel', () => {
+    // The colour budget assumes the brightest pixel is one dot. At rest, every
+    // dot centre is at least two of the largest radii from its neighbours.
+    for (const size of [DESKTOP, PHONE]) {
+      const scene = laidOut(size)
+      const ctx = stubContext()
+      scene.still(ctx, size)
+      const near = inBox(ctx.dots, [0, size.height * 0.8, size.width, size.height]) // prettier-ignore
+      let closest = Infinity
+      for (let i = 0; i < near.length; i += 1) {
+        for (let j = i + 1; j < near.length; j += 1) {
+          const gap = Math.hypot(near[i]![0]! - near[j]![0]!, near[i]![1]! - near[j]![1]!) // prettier-ignore
+          if (gap < closest) closest = gap
+        }
+      }
+      expect(closest).toBeGreaterThanOrEqual(WAVE_MIN_SPACING)
+    }
+  })
+
+  it('dents the surface under the pointer, and leaves far dots alone', () => {
+    const idle = laidOut(DESKTOP)
     const pointed = laidOut(DESKTOP)
-    pointed.pointer?.(CENTRE_X, CENTRE_Y)
-    const ring = run(pointed, DESKTOP, 1.5)
-
-    // The idle field has dashes in the middle; with the pointer there, the
-    // middle is the hole of the ring.
-    expect(inBox(midpoints(idle), NEAR).length).toBeGreaterThan(5)
-    expect(inBox(midpoints(ring), NEAR).length).toBe(0)
-    // Far from the pointer, nothing moved at all.
-    expect(inBox(midpoints(idle), FAR).length).toBeGreaterThan(50)
-    expect(inBox(midpoints(ring), FAR)).toEqual(inBox(midpoints(idle), FAR))
+    // Parked, so it dents but does not ripple.
+    pointed.pointer?.(720, 700)
+    const a = run(idle, DESKTOP, 1)
+    const b = run(pointed, DESKTOP, 1)
+    const under: [number, number, number, number] = [660, 640, 780, 760]
+    const corner: [number, number, number, number] = [0, 300, 300, 450]
+    // Under the pointer the dots moved...
+    expect(inBox(positions(b), under)).not.toEqual(inBox(positions(a), under))
+    // ...and parted: fewer centres right under the cursor.
+    expect(inBox(b.dots, [700, 680, 740, 720]).length).toBeLessThan(
+      inBox(a.dots, [700, 680, 740, 720]).length,
+    )
+    // Far from it, nothing moved at all.
+    expect(inBox(positions(a), corner).length).toBeGreaterThan(50)
+    expect(inBox(positions(b), corner)).toEqual(inBox(positions(a), corner))
   })
 
-  it('lets the ring fade and settle once the pointer leaves', () => {
+  it('drops a ripple as the pointer moves, which spreads and dies out', () => {
     const control = laidOut(DESKTOP)
     const scene = laidOut(DESKTOP)
-    scene.pointer?.(CENTRE_X, CENTRE_Y)
-    run(control, DESKTOP, 1)
-    run(scene, DESKTOP, 1)
-
+    // A sweep across the lower half, then the pointer leaves.
+    for (let i = 0; i < 10; i += 1) {
+      scene.pointer?.(400 + i * 60, 700)
+      scene.draw(stubContext(), DESKTOP, 1000 / 30)
+      control.draw(stubContext(), DESKTOP, 1000 / 30)
+    }
     scene.pointer?.(null, null)
-    run(control, DESKTOP, 0.5)
-    const fading = run(scene, DESKTOP, 0.5)
-    // Half a second on, the hole is filling back in.
-    expect(inBox(midpoints(fading), NEAR).length).toBeGreaterThan(0)
-
-    const settledControl = run(control, DESKTOP, 4)
-    const settled = run(scene, DESKTOP, 4)
-    // And a few seconds on, every spring is back at rest: the frame is the
-    // plain idle field again.
-    expect(midpoints(settled)).toEqual(midpoints(settledControl))
+    // Half a second on, the dent has gone but the ripples are still out.
+    const rippling = run(scene, DESKTOP, 0.5)
+    const plain = run(control, DESKTOP, 0.5)
+    expect(meanMove(rippling, plain)).toBeGreaterThan(0.05)
+    // A few seconds on, they have died out: the plain wave again.
+    expect(positions(run(scene, DESKTOP, 3))).toEqual(
+      positions(run(control, DESKTOP, 3)),
+    )
   })
 
-  it('moves the field with the tilt', () => {
+  it('rolls the horizon and moves it up and down with the tilt', () => {
     const level = laidOut(PHONE)
     level.tilt?.(0, 0)
-    const tilted = laidOut(PHONE)
-    tilted.tilt?.(1, 0)
-    const meanX = (ctx: Stub) => {
-      const points = midpoints(ctx)
-      return points.reduce((sum, [x]) => sum + x!, 0) / points.length
-    }
-    // Tilting right shifts the whole field right by its parallax.
-    expect(meanX(run(tilted, PHONE, 1)) - meanX(run(level, PHONE, 1))).toBeGreaterThan(4) // prettier-ignore
+    const rolled = laidOut(PHONE)
+    rolled.tilt?.(1, 0)
+    const pitched = laidOut(PHONE)
+    pitched.tilt?.(0, 1)
+    const flat = run(level, PHONE, 1.5)
+    const roll = run(rolled, PHONE, 1.5)
+    const pitch = run(pitched, PHONE, 1.5)
+
+    const slope = (ctx: Stub) =>
+      topIn(ctx.dots, PHONE.width - 60, PHONE.width) - topIn(ctx.dots, 0, 60)
+    // Level, the horizon is flat to within the sway; rolled right, it turns
+    // the other way on screen, by most of 8 degrees across the width.
+    expect(Math.abs(slope(flat))).toBeLessThan(15)
+    expect(slope(roll)).toBeLessThan(-PHONE.width * Math.tan((5 * Math.PI) / 180)) // prettier-ignore
+    // Pitched, it moves down by most of 8% of the height.
+    const middle = (ctx: Stub) => topIn(ctx.dots, PHONE.width / 2 - 30, PHONE.width / 2 + 30) // prettier-ignore
+    expect(middle(pitch) - middle(flat)).toBeGreaterThan(PHONE.height * 0.05)
   })
 
-  it('jiggles every dash on a jolt, then settles', () => {
-    const control = laidOut(DESKTOP)
-    const scene = laidOut(DESKTOP)
-    run(control, DESKTOP, 0.5)
-    run(scene, DESKTOP, 0.5)
-    scene.jolt?.(1)
-    const jolted = run(scene, DESKTOP, 0.1)
-    const plain = run(control, DESKTOP, 0.1)
-    expect(inBox(midpoints(jolted), FAR)).not.toEqual(
-      inBox(midpoints(plain), FAR),
-    )
+  it('sways on a handheld with no reading, and stops when it is no longer one', () => {
+    const scene = laidOut(PHONE)
+    scene.tilt?.(null, null)
+    run(scene, PHONE, 3)
+    const a = run(scene, PHONE, 0.1)
+    const swaying = topIn(a.dots, 0, 60) - topIn(a.dots, PHONE.width - 60, PHONE.width) // prettier-ignore
+    expect(Math.abs(swaying)).toBeGreaterThan(1)
 
-    expect(midpoints(run(scene, DESKTOP, 4))).toEqual(
-      midpoints(run(control, DESKTOP, 4)),
+    scene.tilt?.(null, null, false)
+    run(scene, PHONE, 3)
+    const b = run(scene, PHONE, 0.1)
+    const settled = topIn(b.dots, 0, 60) - topIn(b.dots, PHONE.width - 60, PHONE.width) // prettier-ignore
+    expect(Math.abs(settled)).toBeLessThan(Math.abs(swaying))
+    expect(Math.abs(settled)).toBeLessThan(6)
+  })
+
+  it('drops a ripple on a jolt, then settles', () => {
+    const control = laidOut(PHONE)
+    const scene = laidOut(PHONE)
+    run(control, PHONE, 0.5)
+    run(scene, PHONE, 0.5)
+    scene.jolt?.(1)
+    expect(meanMove(run(scene, PHONE, 0.4), run(control, PHONE, 0.4))).toBeGreaterThan(0.05) // prettier-ignore
+    expect(positions(run(scene, PHONE, 3))).toEqual(
+      positions(run(control, PHONE, 3)),
     )
   })
 })
@@ -245,33 +343,23 @@ describe('background colour budget', () => {
   const TONE_NAMES = ['amber', 'accent', 'light']
 
   /**
-   * Brightest pixel the background is allowed to put on screen. One dash at
-   * the peak, and then the ring overlap: two peak dashes from different
-   * buckets crossing, every pairing of tones, stacked as deep as the palette
-   * says they can. Dashes in the same bucket share one stroke and so cannot
-   * compound.
+   * Brightest pixel the background is allowed to put on screen: one near-row
+   * dot at the peak. Dots in the same bucket share one fill and cannot
+   * compound, and the spacing test above keeps dots from two buckets apart.
    */
-  const HIGHLIGHTS: Array<[string, Rgb]> = []
-  FIELD_TONES.forEach((tone, i) => {
-    const peak = FIELD_ALPHA_PEAK * FIELD_TONE_GAIN[i]!
-    HIGHLIGHTS.push([`field, ${TONE_NAMES[i]} at the peak`, composite(tone, peak)]) // prettier-ignore
-    FIELD_TONES.forEach((over, j) => {
-      let colour = composite(tone, peak)
-      for (let k = 1; k < FIELD_RING_OVERLAP; k += 1) {
-        colour = composite(over, FIELD_ALPHA_PEAK * FIELD_TONE_GAIN[j]!, colour)
-      }
-      HIGHLIGHTS.push([`field, ring overlap ${TONE_NAMES[j]} on ${TONE_NAMES[i]}`, colour]) // prettier-ignore
-    })
-  })
-
-  /** Faintest mark it draws, which still has to be visible. */
-  const FAINTEST: Array<[string, Rgb]> = FIELD_TONES.map((tone, i) => [
-    `field, ${TONE_NAMES[i]} at the idle low`,
-    composite(tone, FIELD_ALPHA_IDLE_LOW * FIELD_TONE_GAIN[i]!),
+  const HIGHLIGHTS: Array<[string, Rgb]> = WAVE_TONES.map((tone, i) => [
+    `wave, ${TONE_NAMES[i]} near-row dot at the peak`,
+    composite(tone, WAVE_ALPHA_PEAK * WAVE_TONE_GAIN[i]!),
   ])
 
-  it('budgets for at least two dashes overlapping on the ring', () => {
-    expect(FIELD_RING_OVERLAP).toBeGreaterThanOrEqual(2)
+  /** Faintest mark it draws, which still has to be visible. */
+  const FAINTEST: Array<[string, Rgb]> = WAVE_TONES.map((tone, i) => [
+    `wave, ${TONE_NAMES[i]} at the horizon`,
+    composite(tone, WAVE_ALPHA_FAINT * WAVE_TONE_GAIN[i]!),
+  ])
+
+  it('keeps the dot spacing at two of the largest radii', () => {
+    expect(WAVE_MIN_SPACING).toBeGreaterThanOrEqual(2 * WAVE_MAX_RADIUS)
   })
 
   it.each(FAINTEST)('%s is bright enough to see', (_label, colour) => {

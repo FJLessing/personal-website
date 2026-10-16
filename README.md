@@ -119,7 +119,7 @@ app/
     useBackgroundCanvas.ts      canvas runtime: rAF, reduced motion, pausing
   utils/backgrounds/
     scene.ts                    the contract the runtime drives
-    fieldScene.ts               the dash field and its springy ring
+    waveScene.ts                the dot wave, its dent and ripples
     palette.ts                  the colour budget, both ends of it
 server/
   plugins/
@@ -188,19 +188,21 @@ filled in.
 
 ### The background
 
-`app/components/SiteBackground.client.vue` draws **Field**: a jittered grid
-of short yellow dashes in three tones that turn and drift on a slow flow field
-while a brightness wave crosses them. On a desktop the cursor pushes the dashes
-out of a hole into a ring, where they turn tangent, stretch and brighten; each
-dash rides a damped spring, so the ring follows the cursor and settles back
-with a small overshoot. On a phone there is no cursor, so tilting the device
-rolls the ring across the screen and shifts the field with a little depth
-parallax, a sharp movement jiggles every spring, and with no input at all the
-ring wanders slowly on its own.
+`app/components/SiteBackground.client.vue` draws **Wave**: a grid of yellow
+dots on a rolling water surface, seen in perspective, across the bottom two
+thirds of the page. The horizon sits a third of the way down, so the hero
+heading has plain backdrop behind it. Three travelling sine waves make slow
+swells that always roll, with no input. Near dots are bigger and brighter than
+far ones, and crests brighter than troughs, in three yellow tones. On a desktop
+the cursor dents the surface and, as it moves, drops ripples that spread and
+die out over about two seconds. On a phone there is no cursor, so rolling the
+device turns the horizon by up to 8 degrees, pitching it moves the horizon up
+or down by up to 8% of the screen, a sharp movement drops a ripple, and with no
+input at all the view sways slowly on its own.
 
 The tilt needs a secure context (HTTPS) and, on iOS, a permission that can only
 be asked for from a user gesture. The runtime asks once, on the first tap, and
-never on load; if the answer is no, the wander carries on. Production must send
+never on load; if the answer is no, the sway carries on. Production must send
 `Permissions-Policy: accelerometer=(self), gyroscope=(self)` (see
 `DEPLOYMENT.md`), or Chrome never delivers the sensor events.
 
@@ -217,20 +219,20 @@ children, so the background layer ends up underneath the page colour. It still
 renders, just multiplied down to a tenth of its brightness, which looks
 like a background that does not work rather than one that is mis-stacked.
 
-The split is deliberate. `app/utils/backgrounds/fieldScene.ts` is a plain
+The split is deliberate. `app/utils/backgrounds/waveScene.ts` is a plain
 module that only ever touches a 2D context, with no DOM and no timers, which is what
 lets it be driven from Node to measure cost. Everything browser-shaped lives in
 `app/composables/useBackgroundCanvas.ts`, and that is where the rules are
 enforced in one place: `prefers-reduced-motion: reduce` draws a single still
 frame and never starts the loop, the loop stops when the tab is hidden or the
 canvas scrolls off-screen, the backing store is capped (harder on small
-screens), the scene is told it is small so it can coarsen its own grid, and
+screens), the scene is told it is small so it can thin out its own grid, and
 tilt and motion are only listened to on a coarse pointer with reduced motion
 off. Calibration, screen rotation and filtering of the sensors live there too,
 so the scene only ever sees clean -1..1 tilt and 0..1 jolt values.
 
-`npm run bg:cost` prints the per-frame cost and stroke count at 360px and
-1440px, and fails over 2 ms (desktop), 1 ms (phone) or 12 strokes;
+`npm run bg:cost` prints the per-frame cost and fill count at 360px and
+1440px, and fails over 2 ms (desktop), 1 ms (phone) or 12 fills;
 `test/backgrounds.spec.ts` asserts the phone stays under 75% of the desktop
 work, so the cap cannot silently regress.
 

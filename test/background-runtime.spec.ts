@@ -157,6 +157,11 @@ function createHarness({
       reduced = value
       for (const fn of mediaListeners) fn()
     },
+    /** Drives the `(pointer: coarse)` media query: a keyboard and trackpad attached. */
+    setCoarse: (value: boolean) => {
+      coarse = value
+      for (const fn of mediaListeners) fn()
+    },
     setVisibility: (value: 'visible' | 'hidden') => {
       visibility = value
       for (const fn of visibilityListeners) fn()
@@ -465,6 +470,30 @@ describe('background canvas sensors', () => {
     expect(tilt.mock.calls.every(([x, y]) => x === null && y === null)).toBe(
       true,
     )
+  })
+
+  it('says it is no longer a handheld when the pointer turns fine', async () => {
+    // A tablet that gets a keyboard and trackpad attached. The scene was told
+    // "handheld" when listening started; detaching has to take that back, or
+    // its idle motion keeps running under a real cursor.
+    harness = createHarness(PHONE)
+    const { scene, tilt } = sensorScene(harness)
+    const remove = vi.spyOn(window, 'removeEventListener')
+    await mountCanvas(scene)
+    expect(tilt).toHaveBeenLastCalledWith(null, null)
+    orient(harness, 50, 10, 40)
+    tilt.mockClear()
+
+    harness.setCoarse(false)
+    expect(tilt).toHaveBeenCalledTimes(1)
+    expect(tilt).toHaveBeenLastCalledWith(null, null, false)
+    const types = remove.mock.calls.map(([type]) => type)
+    expect(types).toContain('deviceorientation')
+    expect(types).toContain('devicemotion')
+
+    // And back again: a handheld once more, before any reading.
+    harness.setCoarse(true)
+    expect(tilt).toHaveBeenLastCalledWith(null, null)
   })
 
   it('removes every sensor listener on unmount', async () => {

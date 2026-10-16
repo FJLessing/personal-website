@@ -44,49 +44,48 @@ export const MIN_VISIBLE_CONTRAST = 1.1
 export const MAX_HIGHLIGHT_LUMINANCE = 0.07
 
 /**
- * Field dashes: the three tones. A deep amber, the accent itself and a light
- * yellow. Each dash keeps one tone for life, so the mix reads as texture
- * rather than as flicker.
+ * Wave dots: the three tones. A deep amber, the accent itself and a light
+ * yellow. Far, low dots lean amber and near crests lean light, so the mix
+ * follows the shape of the surface.
  */
-export const FIELD_AMBER: Rgb = [214, 120, 0]
-export const FIELD_LIGHT: Rgb = [255, 216, 107]
-export const FIELD_TONES: readonly Rgb[] = [FIELD_AMBER, ACCENT, FIELD_LIGHT]
+export const WAVE_AMBER: Rgb = [214, 120, 0]
+export const WAVE_LIGHT: Rgb = [255, 216, 107]
+export const WAVE_TONES: readonly Rgb[] = [WAVE_AMBER, ACCENT, WAVE_LIGHT]
 
 /**
  * Per-tone alpha multiplier, so the three tones sit at roughly the same
  * luminance for the same intensity. Amber is dark and needs more alpha to be
  * seen; light yellow is bright and reaches the ceiling first.
  */
-export const FIELD_TONE_GAIN: readonly number[] = [1.3, 1, 0.84]
+export const WAVE_TONE_GAIN: readonly number[] = [1.3, 1, 0.84]
 
 /**
- * Field intensity before the per-tone gain. The idle field breathes between
- * the two idle values as a slow wave crosses it; dashes pushed onto the ring
- * around the influence point climb to the peak.
+ * Wave intensity before the per-tone gain. The faintest rung is what the far
+ * rows by the horizon draw; the peak is a near-row dot on a crest or a ripple.
  */
-export const FIELD_ALPHA_IDLE_LOW = 0.09
-export const FIELD_ALPHA_IDLE_HIGH = 0.13
-export const FIELD_ALPHA_PEAK = 0.19
+export const WAVE_ALPHA_FAINT = 0.11
+export const WAVE_ALPHA_PEAK = 0.34
 
 /**
- * The alpha ladder the scene quantises to, one stroke per rung per tone. Four
- * rungs times three tones is the twelve-stroke ceiling.
+ * The alpha ladder the scene quantises to, one fill per rung per tone. Four
+ * rungs times three tones is the twelve-fill ceiling.
  */
-export const FIELD_ALPHA_LEVELS: readonly number[] = [
-  FIELD_ALPHA_IDLE_LOW,
-  FIELD_ALPHA_IDLE_HIGH,
-  (FIELD_ALPHA_IDLE_HIGH + FIELD_ALPHA_PEAK) / 2,
-  FIELD_ALPHA_PEAK,
+export const WAVE_ALPHA_LEVELS: readonly number[] = [
+  WAVE_ALPHA_FAINT,
+  0.18,
+  0.26,
+  WAVE_ALPHA_PEAK,
 ]
 
 /**
- * Overlap. Dashes in the same bucket share one path and one `stroke()`, and a
- * stroke fills the union of its path, so they never compound. Dashes from two
- * different buckets do. On the ring, where dashes bunch, two of the brightest
- * can cross, so the ceiling is checked against every pair of tones at the peak
- * stacked on each other, not against one dash alone.
+ * Largest dot radius, in CSS pixels, and the tightest gap between two dot
+ * centres at rest. Dots in one bucket share one path and one `fill()`, so they
+ * never compound; dots from two buckets would. The grid keeps every centre at
+ * least two radii apart, so the brightest pixel is one dot at the peak, not a
+ * stack. `test/backgrounds.spec.ts` checks the layout against both numbers.
  */
-export const FIELD_RING_OVERLAP = 2
+export const WAVE_MAX_RADIUS = 1.6
+export const WAVE_MIN_SPACING = 2 * WAVE_MAX_RADIUS
 
 const channel = (value: number) => {
   const c = value / 255

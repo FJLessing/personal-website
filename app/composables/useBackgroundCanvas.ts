@@ -223,7 +223,7 @@ const GRAVITY_MS = 250
 const JOLT_FLOOR = 1.5
 /** High-passed acceleration above the floor that makes a full-strength jolt. */
 const JOLT_RANGE = 8
-/** Shortest gap between two jolts, in ms, so a shake does not pump the springs. */
+/** Shortest gap between two jolts, in ms, so a shake does not stack ripples. */
 const JOLT_GAP_MS = 150
 
 interface PermissionGated {
@@ -285,7 +285,7 @@ function createSensorBridge(scene: BackgroundScene) {
       tiltY = 0
     } else {
       const dt = now - lastTilt
-      // The zero drifts towards the current angle, so the field answers
+      // The zero drifts towards the current angle, so the scene answers
       // changes in tilt rather than the angle the phone happens to rest at.
       const drift = blend(dt, CALIBRATION_MS)
       zeroX += (x - zeroX) * drift
@@ -388,8 +388,9 @@ function createSensorBridge(scene: BackgroundScene) {
     window.removeEventListener('deviceorientation', onOrientation)
     window.removeEventListener('devicemotion', onMotion)
     removeGesture()
-    // Drop the last reading, so no parallax is left frozen in place.
-    scene.tilt?.(null, null)
+    // Drop the last reading, so no tilt is left frozen in place, and say this
+    // is no longer a handheld, so the scene stops its idle motion too.
+    scene.tilt?.(null, null, false)
   }
 
   return { listen }

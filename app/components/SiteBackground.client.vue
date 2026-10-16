@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { createFieldScene } from '~/utils/backgrounds/fieldScene'
+import { createWaveScene } from '~/utils/backgrounds/waveScene'
 
 /**
- * The site background: "Field", a grid of short yellow dashes drifting on a
- * slow flow field. The cursor, or on a phone the tilt of the device and a slow
- * wander, pushes the dashes out into a springy ring.
+ * The site background: "Wave", a field of yellow dots on a rolling water
+ * surface across the bottom two thirds of the page. The cursor dents it and
+ * drops ripples; on a phone the tilt rolls and lifts the horizon, a shake
+ * drops a ripple, and a slow sway keeps it moving.
  *
  * The `.client` suffix means Nuxt never renders this on the server, so the
  * scene and the canvas runtime are free to touch `window`, `document`,
@@ -19,10 +20,10 @@ import { createFieldScene } from '~/utils/backgrounds/fieldScene'
  * `useBackgroundCanvas`. This component is the mount boundary and the
  * `aria-hidden` wrapper, nothing more.
  */
-const { canvas } = useBackgroundCanvas(createFieldScene, {
-  // Springs read as stepped below about 24fps, so this runs faster than the
-  // old isolines did. A frame is a few thousand dashes in twelve strokes; if
-  // a real phone struggles, lower `smallFps` first.
+const { canvas } = useBackgroundCanvas(createWaveScene, {
+  // The swells are slow, but ripples and the tilt read as stepped below about
+  // 24fps. A frame is a few thousand dots in twelve fills; if a real phone
+  // struggles, lower `smallFps` first.
   fps: 30,
   smallFps: 24,
 })

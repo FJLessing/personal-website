@@ -53,10 +53,12 @@ export interface BackgroundScene {
    * low-pass filtered by the runtime. `null` means a handheld device with no
    * reading (yet, or ever: the sensor may be missing or permission denied).
    * The runtime calls `tilt(null, null)` once when it starts listening, so a
-   * scene can treat any call as "this is a handheld" and add its own idle
-   * motion in place of a cursor.
+   * scene can add its own idle motion in place of a cursor before any reading
+   * arrives. When it stops listening (the pointer turned fine, reduced motion
+   * came on, or the canvas went away) it calls `tilt(null, null, false)`:
+   * `handheld` is false only then, and the scene should drop the idle motion.
    */
-  tilt?(x: number | null, y: number | null): void
+  tilt?(x: number | null, y: number | null, handheld?: boolean): void
 
   /**
    * Optional jolt hook. Defining it opts the scene into the accelerometer on a
